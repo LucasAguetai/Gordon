@@ -71,7 +71,7 @@ export default function LoginGate({ onUnlocked }: Props) {
               <PortraitReel
                 agentId={id}
                 state={suited ? "uniform" : "civil"}
-                size={74}
+                size={88}
               />
             </div>
           ))}

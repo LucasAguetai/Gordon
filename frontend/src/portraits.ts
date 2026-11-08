@@ -1,178 +1,391 @@
 /* Portraits pixel art des agents, cadrés aux épaules.
  *
- * Chaque portrait est une grille de 16 × 16 décrite en texte : un caractère
- * par pixel, résolu via la palette de l'agent. Le format est volontairement
- * lisible pour pouvoir retoucher un visage directement dans le fichier.
+ * FICHIER GÉNÉRÉ — ne pas retoucher à la main.
+ * Source : scripts/genportraits.py, puis `python3 scripts/genportraits.py`.
  *
- * La tête (12 lignes) est commune aux deux états : c'est la même personne,
- * seule la tenue change. Le buste (4 lignes) porte la différence entre civil
- * et tenue de service.
+ * Grille 32 × 32, un caractère par pixel, résolu via la palette de l'agent.
+ * Chaque agent existe en deux états : civil (écran verrouillé) et tenue
+ * (console déverrouillée). La tenue est une combinaison bleue commune,
+ * barrée d'un baudrier à la couleur de l'agent allant de son épaule gauche
+ * à sa hanche droite — le personnage nous faisant face, la bande descend
+ * donc de la droite vers la gauche de l'image.
  *
- *   .  transparent      s  peau            c  vêtement civil
- *   k  cheveux          d  peau (ombre)    a  tenue (couleur d'accent)
- *   K  cheveux clairs   m  bouche          w  insigne
- *   e  œil              g  équipement (lunettes, casque, visière)
- *
- * Les grilles sont produites par scratchpad/genportraits.py, qui décrit
- * chaque ligne en paires (caractère, répétitions) : les largeurs sont donc
- * justes par construction. Une retouche ponctuelle peut se faire ici
- * directement, à condition de garder 16 caractères par ligne.
+ *   .  transparent   s  peau          c  vêtement civil    u  combinaison
+ *   k  cheveux       d  peau (ombre)  v  civil (ombre)     U  combi. claire
+ *   K  cheveux clairs m  bouche       a  baudrier          V  combi. ombre
+ *   e  pupille       w  blanc de l'œil / insigne
+ *   g  équipement (lunettes, casque, visière)   A  liseré du baudrier
  */
 
-export const GRID = 16;
+export const GRID = 32;
 
 export type Palette = Record<string, string>;
 
 type Portrait = {
-  head: string[];
+  civil: string[];
+  uniform: string[];
   palette: Palette;
 };
 
-const TORSO_CIVIL = [
-  "....cccccccc....",
-  "..cccccccccccc..",
-  ".cccccccccccccc.",
-  ".cccccccccccccc.",
-];
-
-const TORSO_UNIFORM = [
-  "....caaaaaac....",
-  "..ccaaaaaaaacc..",
-  ".cccaaaaaaaaccc.",
-  ".ccaaaawwaaaacc.",
-];
-
-/** Peau et œil sont communs : la distinction se fait sur cheveux et tenue. */
-const SKIN = { e: "#17120d", w: "#f4f7ff" };
+/** Couleurs identiques pour tous : yeux et combinaison de service. */
+const SHARED: Palette = {
+  e: "#141019",
+  w: "#f6f8ff",
+  u: "#2f5d99",
+  U: "#3f76bb",
+  V: "#1f4272",
+};
 
 const PORTRAITS: Record<string, Portrait> = {
-  // Atlas — lunettes, coupe nette.
+  // Atlas
   finance: {
-    head: [
-      "................",
-      "....kkkkkkkk....",
-      "...kkkkkkkkkk...",
-      "...kksssssskk...",
-      "...kssssssssk...",
-      "...kgegssgegk...",
-      "...kssssssssk...",
-      "...ksssddsssk...",
-      "...kssssssssk...",
-      "...kssmmmmssk...",
-      ".....ssssss.....",
-      "......dddd......",
+    civil: [
+      "................................",
+      "................................",
+      "................................",
+      "...........kkkkkkkkkk...........",
+      "..........kkkkkkkkkkkk..........",
+      "..........kkkkkkkkkkkk..........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kksssssssssskk.........",
+      ".........kksssssssssskk.........",
+      ".........sskkksssskkkss.........",
+      ".........sgggggssgggggs.........",
+      "........gggwewggggwewggg........",
+      "........ssgwewgssgwewgss........",
+      "........ssgggggddgggggss........",
+      ".........ssssssddssssss.........",
+      ".........ssssssddssssss.........",
+      ".........ssssssssssssss.........",
+      ".........ssssmmmmmmssss.........",
+      "..........ssssssssssss..........",
+      "...........ssssssssss...........",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........ccvvvvvvcc...........",
+      ".........cccvvvvvvvvccc.........",
+      ".......cccccccccccccccccc.......",
+      "......cccccccccccccccccccc......",
+      ".....cccccccccccccccccccccc.....",
+      "....cccccccccccccccccccccccc....",
+      "....cccccccccccccccccccccccc....",
+      "...cccccccccccccccccccccccccc...",
+      "...cccccccccccccccccccccccccc...",
+    ],
+    uniform: [
+      "................................",
+      "................................",
+      "................................",
+      "...........kkkkkkkkkk...........",
+      "..........kkkkkkkkkkkk..........",
+      "..........kkkkkkkkkkkk..........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kksssssssssskk.........",
+      ".........kksssssssssskk.........",
+      ".........sskkksssskkkss.........",
+      ".........sgggggssgggggs.........",
+      "........gggwewggggwewggg........",
+      "........ssgwewgssgwewgss........",
+      "........ssgggggddgggggss........",
+      ".........ssssssddssssss.........",
+      ".........ssssssddssssss.........",
+      ".........ssssssssssssss.........",
+      ".........ssssmmmmmmssss.........",
+      "..........ssssssssssss..........",
+      "...........ssssssssss...........",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........uuUuuuuUuu...........",
+      ".........uuuUUuuuuUUuaa.........",
+      ".......uuuuuuuuuuuuaaaaAu.......",
+      "......uuuuuuuuuuuaaaaAuuuu......",
+      ".....uuuuuuuuuuaaaaAuuuuuuu.....",
+      "....uuuuuuuuuaaaaAuuuuuuuuuu....",
+      "....uuuuuuuaaaaAuuuuuuuuuuuu....",
+      "...uuuuuuaaaaAuuuuuuuuuuuuuuu...",
+      "...uuuuaaaaAuuuuuuuuuuuuuuuuu...",
     ],
     palette: {
-      ...SKIN,
+      ...SHARED,
       k: "#2b2117",
       s: "#e8b88f",
-      d: "#c89468",
-      m: "#9c6442",
-      g: "#8a93a6",
+      d: "#c08a5f",
+      m: "#9c5c3c",
+      g: "#9aa6bd",
       c: "#3a4252",
+      v: "#2b3240",
       a: "#34d399",
+      A: "#7ff0c4",
     },
   },
 
-  // Mentor — chignon haut, mèches longues.
+  // Mentor
   revisions: {
-    head: [
-      "......kkkk......",
-      "....kkkkkkkk....",
-      "...kkkkkkkkkk...",
-      "..kkksssssskkk..",
-      "..kksssssssskk..",
-      "..kkssessesskk..",
-      "..kksssssssskk..",
-      "..kksssddssskk..",
-      "..kksssssssskk..",
-      "..kkssmmmmsskk..",
-      ".....ssssss.....",
-      "......dddd......",
+    civil: [
+      "................................",
+      ".............kkkkkk.............",
+      ".............kkkkkk.............",
+      "...........kkkkkkkkkk...........",
+      "..........kkkkkkkkkkkk..........",
+      "..........kkkkkkkkkkkk..........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".......kkkksssssssssskkkk.......",
+      ".......kkkksssssssssskkkk.......",
+      ".......kksskkksssskkksskk.......",
+      ".......kksssssssssssssskk.......",
+      ".......kksswewsssswewsskk.......",
+      ".......kksswewsssswewsskk.......",
+      ".......kkssssssddsssssskk.......",
+      ".......kkssssssddsssssskk.......",
+      ".......kkssssssddsssssskk.......",
+      ".......kksssssssssssssskk.......",
+      ".......kkssssmmmmmmsssskk.......",
+      ".......kk.ssssssssssss.kk.......",
+      ".......kk..ssssssssss..kk.......",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........ccvvvvvvcc...........",
+      ".........cccvvvvvvvvccc.........",
+      ".......cccccccccccccccccc.......",
+      "......cccccccccccccccccccc......",
+      ".....cccccccccccccccccccccc.....",
+      "....cccccccccccccccccccccccc....",
+      "....cccccccccccccccccccccccc....",
+      "...cccccccccccccccccccccccccc...",
+      "...cccccccccccccccccccccccccc...",
+    ],
+    uniform: [
+      "................................",
+      ".............kkkkkk.............",
+      ".............kkkkkk.............",
+      "...........kkkkkkkkkk...........",
+      "..........kkkkkkkkkkkk..........",
+      "..........kkkkkkkkkkkk..........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".......kkkksssssssssskkkk.......",
+      ".......kkkksssssssssskkkk.......",
+      ".......kksskkksssskkksskk.......",
+      ".......kksssssssssssssskk.......",
+      ".......kksswewsssswewsskk.......",
+      ".......kksswewsssswewsskk.......",
+      ".......kkssssssddsssssskk.......",
+      ".......kkssssssddsssssskk.......",
+      ".......kkssssssddsssssskk.......",
+      ".......kksssssssssssssskk.......",
+      ".......kkssssmmmmmmsssskk.......",
+      ".......kk.ssssssssssss.kk.......",
+      ".......kk..ssssssssss..kk.......",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........uuUuuuuUuu...........",
+      ".........uuuUUuuuuUUuaa.........",
+      ".......uuuuuuuuuuuuaaaaAu.......",
+      "......uuuuuuuuuuuaaaaAuuuu......",
+      ".....uuuuuuuuuuaaaaAuuuuuuu.....",
+      "....uuuuuuuuuaaaaAuuuuuuuuuu....",
+      "....uuuuuuuaaaaAuuuuuuuuuuuu....",
+      "...uuuuuuaaaaAuuuuuuuuuuuuuuu...",
+      "...uuuuaaaaAuuuuuuuuuuuuuuuuu...",
     ],
     palette: {
-      ...SKIN,
+      ...SHARED,
       k: "#4a2c17",
       s: "#f0c9a0",
-      d: "#d0a076",
-      m: "#a86f4c",
-      g: "#8a93a6",
+      d: "#cf9a6d",
+      m: "#a86244",
+      g: "#9aa6bd",
       c: "#44405c",
+      v: "#332f47",
       a: "#fbbf24",
+      A: "#ffe08a",
     },
   },
 
-  // Vigie — casque d'écoute.
+  // Vigie
   veille: {
-    head: [
-      "................",
-      "....kkkkkkkk....",
-      "..gggggggggggg..",
-      "..gkksssssskkg..",
-      "..gksssssssskg..",
-      "..gkssessesskg..",
-      "..gksssssssskg..",
-      "...ksssddsssk...",
-      "...kssssssssk...",
-      "...kssmmmmssk...",
-      ".....ssssss.....",
-      "......dddd......",
+    civil: [
+      "................................",
+      "................................",
+      "..........gggggggggggg..........",
+      "........gg.kkkkkkkkkk.gg........",
+      "........ggkkkkkkkkkkkkgg........",
+      "........ggkkkkkkkkkkkkgg........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kksssssssssskk.........",
+      ".........kksssssssssskk.........",
+      ".........sskkksssskkkss.........",
+      ".......ggssssssssssssssgg.......",
+      ".......ggsswewsssswewssgg.......",
+      ".......ggsswewsssswewssgg.......",
+      ".......ggssssssddssssssgg.......",
+      ".........gsssssddssssss.........",
+      ".........gsssssddssssss.........",
+      ".........gggsssssssssss.........",
+      ".........ssssmmmmmmssss.........",
+      "..........ssssssssssss..........",
+      "...........ssssssssss...........",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........ccvvvvvvcc...........",
+      ".........cccvvvvvvvvccc.........",
+      ".......cccccccccccccccccc.......",
+      "......cccccccccccccccccccc......",
+      ".....cccccccccccccccccccccc.....",
+      "....cccccccccccccccccccccccc....",
+      "....cccccccccccccccccccccccc....",
+      "...cccccccccccccccccccccccccc...",
+      "...cccccccccccccccccccccccccc...",
+    ],
+    uniform: [
+      "................................",
+      "................................",
+      "..........gggggggggggg..........",
+      "........gg.kkkkkkkkkk.gg........",
+      "........ggkkkkkkkkkkkkgg........",
+      "........ggkkkkkkkkkkkkgg........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kkkkkkkkkkkkkk.........",
+      ".........kksssssssssskk.........",
+      ".........kksssssssssskk.........",
+      ".........sskkksssskkkss.........",
+      ".......ggssssssssssssssgg.......",
+      ".......ggsswewsssswewssgg.......",
+      ".......ggsswewsssswewssgg.......",
+      ".......ggssssssddssssssgg.......",
+      ".........gsssssddssssss.........",
+      ".........gsssssddssssss.........",
+      ".........gggsssssssssss.........",
+      ".........ssssmmmmmmssss.........",
+      "..........ssssssssssss..........",
+      "...........ssssssssss...........",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........uuUuuuuUuu...........",
+      ".........uuuUUuuuuUUuaa.........",
+      ".......uuuuuuuuuuuuaaaaAu.......",
+      "......uuuuuuuuuuuaaaaAuuuu......",
+      ".....uuuuuuuuuuaaaaAuuuuuuu.....",
+      "....uuuuuuuuuaaaaAuuuuuuuuuu....",
+      "....uuuuuuuaaaaAuuuuuuuuuuuu....",
+      "...uuuuuuaaaaAuuuuuuuuuuuuuuu...",
+      "...uuuuaaaaAuuuuuuuuuuuuuuuuu...",
     ],
     palette: {
-      ...SKIN,
-      k: "#1f1b2e",
+      ...SHARED,
+      k: "#241d33",
       s: "#d9a07a",
-      d: "#b87f5c",
-      m: "#8e5438",
-      g: "#a7b0c4",
+      d: "#b2744f",
+      m: "#8e4b31",
+      g: "#aab4c8",
       c: "#37414f",
+      v: "#28303c",
       a: "#f472b6",
+      A: "#ffa8d6",
     },
   },
 
-  // Forge — casquette à visière.
+  // Forge
   code: {
-    head: [
-      "................",
-      "...KKKKKKKKKK...",
-      "..KKKKKKKKKKKK..",
-      "..gggggggggggg..",
-      "...kssssssssk...",
-      "...kssessessk...",
-      "...kssssssssk...",
-      "...ksssddsssk...",
-      "...kssssssssk...",
-      "...kssmmmmssk...",
-      ".....ssssss.....",
-      "......dddd......",
+    civil: [
+      "................................",
+      "................................",
+      "..........KKKKKKKKKKKK..........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".....gggggggggggggggggg.........",
+      ".....gggggggggggggggggg.........",
+      ".........sskkksssskkkss.........",
+      ".........ssssssssssssss.........",
+      "........ssswewsssswewsss........",
+      "........ssswewsssswewsss........",
+      "........sssssssddsssssss........",
+      ".........ssssssddssssss.........",
+      ".........ssssssddssssss.........",
+      ".........ssssssssssssss.........",
+      ".........ssssmmmmmmssss.........",
+      "..........ssssssssssss..........",
+      "...........ssssssssss...........",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........ccvvvvvvcc...........",
+      ".........cccvvvvvvvvccc.........",
+      ".......cccccccccccccccccc.......",
+      "......cccccccccccccccccccc......",
+      ".....cccccccccccccccccccccc.....",
+      "....cccccccccccccccccccccccc....",
+      "....cccccccccccccccccccccccc....",
+      "...cccccccccccccccccccccccccc...",
+      "...cccccccccccccccccccccccccc...",
+    ],
+    uniform: [
+      "................................",
+      "................................",
+      "..........KKKKKKKKKKKK..........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".........KKKKKKKKKKKKKK.........",
+      ".....gggggggggggggggggg.........",
+      ".....gggggggggggggggggg.........",
+      ".........sskkksssskkkss.........",
+      ".........ssssssssssssss.........",
+      "........ssswewsssswewsss........",
+      "........ssswewsssswewsss........",
+      "........sssssssddsssssss........",
+      ".........ssssssddssssss.........",
+      ".........ssssssddssssss.........",
+      ".........ssssssssssssss.........",
+      ".........ssssmmmmmmssss.........",
+      "..........ssssssssssss..........",
+      "...........ssssssssss...........",
+      "............dddddddd............",
+      ".............dddddd.............",
+      "...........uuUuuuuUuu...........",
+      ".........uuuUUuuuuUUuaa.........",
+      ".......uuuuuuuuuuuuaaaaAu.......",
+      "......uuuuuuuuuuuaaaaAuuuu......",
+      ".....uuuuuuuuuuaaaaAuuuuuuu.....",
+      "....uuuuuuuuuaaaaAuuuuuuuuuu....",
+      "....uuuuuuuaaaaAuuuuuuuuuuuu....",
+      "...uuuuuuaaaaAuuuuuuuuuuuuuuu...",
+      "...uuuuaaaaAuuuuuuuuuuuuuuuuu...",
     ],
     palette: {
-      ...SKIN,
+      ...SHARED,
       k: "#241c33",
-      K: "#4c3f6b",
+      K: "#5a4a85",
       s: "#c98f68",
-      d: "#a97250",
-      m: "#7e4a30",
-      g: "#2e2644",
+      d: "#a26644",
+      m: "#7e452c",
+      g: "#3b3158",
       c: "#3b3550",
+      v: "#2c283c",
       a: "#a78bfa",
+      A: "#d4c6ff",
     },
   },
+
 };
 
 export type PortraitState = "civil" | "uniform";
 
-/** Portrait complet (tête + buste) pour un agent et un état donnés. */
+/** Grille et palette d'un agent dans l'état demandé. */
 export function portraitFor(
   agentId: string,
   state: PortraitState,
 ): { rows: string[]; palette: Palette } | null {
   const entry = PORTRAITS[agentId];
   if (!entry) return null;
-  return {
-    rows: [...entry.head, ...(state === "civil" ? TORSO_CIVIL : TORSO_UNIFORM)],
-    palette: entry.palette,
-  };
+  return { rows: state === "civil" ? entry.civil : entry.uniform, palette: entry.palette };
 }
 
 export const portraitIds = Object.keys(PORTRAITS);

@@ -27,7 +27,7 @@ export default function AgentGrid({ agents, onSelect }: Props) {
 
             {hasPortrait(agent.id) && (
               <div className="frame-portrait">
-                <PortraitReel agentId={agent.id} state="uniform" size={64} instant />
+                <PortraitReel agentId={agent.id} state="uniform" size={96} instant />
               </div>
             )}
 

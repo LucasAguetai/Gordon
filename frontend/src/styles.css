@@ -336,7 +336,7 @@ button {
   position: relative;
   text-align: left;
   padding: 20px 18px 18px;
-  min-height: 262px;
+  min-height: 294px;
   border: 1px solid var(--line-bright);
   border-radius: var(--radius);
   background:
@@ -421,8 +421,8 @@ button {
 }
 
 .frame-portrait {
-  width: 64px;
-  height: 64px;
+  width: 96px;
+  height: 96px;
   margin-bottom: 14px;
   border-radius: 10px;
   overflow: hidden;
