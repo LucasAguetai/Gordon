@@ -1,0 +1,119 @@
+import { useEffect, useState } from "react";
+import {
+  getAuthStatus,
+  loginWithPasskey,
+  registerPasskey,
+  supportsPasskeys,
+  type AuthStatus,
+} from "../api";
+
+type Props = { onUnlocked: () => void };
+
+export default function LoginGate({ onUnlocked }: Props) {
+  const [status, setStatus] = useState<AuthStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAuthStatus()
+      .then(setStatus)
+      .catch((e) => setError(e.message));
+  }, []);
+
+  const supported = supportsPasskeys();
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      onUnlocked();
+    } catch (e) {
+      // L'utilisateur qui annule la fenêtre système n'est pas une erreur à
+      // signaler bruyamment.
+      const err = e as Error;
+      if (err.name === "NotAllowedError" || err.name === "AbortError") {
+        setError(null);
+      } else {
+        setError(err.message || "Échec de l'authentification.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const firstRun = status !== null && !status.configured;
+
+  return (
+    <div className="gate">
+      <div className="gate-card">
+        <div className="countdown" aria-hidden="true">
+          <i>5</i>
+          <i>4</i>
+          <i>3</i>
+          <i>2</i>
+          <i>1</i>
+        </div>
+
+        <h1 className="gate-title">Gordon</h1>
+
+        {status === null && !error && (
+          <p className="gate-sub">Connexion à la station…</p>
+        )}
+
+        {!supported && (
+          <p className="alert">
+            Ce navigateur ne gère pas les passkeys. Utilise Safari, Chrome ou
+            Firefox dans une version récente.
+          </p>
+        )}
+
+        {status !== null && supported && (
+          <>
+            <p className="gate-sub">
+              {firstRun
+                ? "Première mise en service. Enregistre une passkey pour devenir le propriétaire de cette instance."
+                : "Station verrouillée. Authentifie-toi avec ta passkey."}
+            </p>
+
+            {firstRun ? (
+              <button
+                className="primary-btn"
+                disabled={busy}
+                onClick={() => run(() => registerPasskey("Appareil principal"))}
+              >
+                {busy ? "Enregistrement…" : "Créer ma passkey"}
+              </button>
+            ) : (
+              <button
+                className="primary-btn"
+                disabled={busy}
+                onClick={() => run(loginWithPasskey)}
+              >
+                {busy ? "Vérification…" : "Déverrouiller"}
+              </button>
+            )}
+
+            {status.registration_open && !firstRun && (
+              <p className="gate-note">
+                L'inscription est encore ouverte en configuration. Pense à
+                repasser <code>GORDON_ALLOW_REGISTRATION</code> à{" "}
+                <code>false</code>.
+              </p>
+            )}
+
+            {firstRun && (
+              <p className="gate-note">
+                Dès cette passkey enregistrée, l'inscription se ferme
+                automatiquement. Tu pourras ajouter d'autres appareils depuis
+                la console.
+              </p>
+            )}
+          </>
+        )}
+
+        {error && <p className="alert">{error}</p>}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,716 @@
+/* Gordon — identité visuelle retro-futuriste.
+   Création originale : aucun asset, logo ou marque de tiers n'est repris. */
+
+:root {
+  --bg: #06080e;
+  --bg-elev: #0c111c;
+  --panel: #111828;
+  --line: #1e2942;
+  --line-bright: #2d3c5e;
+  --text: #e9eef9;
+  --muted: #8995ae;
+  --muted-dim: #5c6780;
+  --amber: #f0a92b;
+  --danger: #f8716b;
+  --radius: 14px;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Grille de fond discrète, évoque un écran de contrôle. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(45, 60, 94, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 60, 94, 0.16) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(ellipse 80% 65% at 50% 38%, #000 25%, transparent 78%);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ===================== Mise en page ===================== */
+
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(6, 8, 14, 0.82);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  font-size: 15px;
+}
+
+.wordmark span {
+  color: var(--amber);
+}
+
+.wordmark small {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--muted-dim);
+  font-weight: 500;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px solid var(--line-bright);
+  color: var(--muted);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: border-color 0.16s, color 0.16s, background 0.16s;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(240, 169, 43, 0.07);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 22px 56px;
+}
+
+/* ===================== Écran de connexion ===================== */
+
+.gate {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.gate-card {
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+}
+
+/* Compte à rebours décoratif, joué une fois à l'arrivée. */
+.countdown {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.countdown i {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-bright);
+  border-radius: 50%;
+  color: var(--muted-dim);
+  font-style: normal;
+  opacity: 0;
+  animation: tick 0.42s ease-out forwards;
+}
+
+.countdown i:nth-child(1) { animation-delay: 0.05s; }
+.countdown i:nth-child(2) { animation-delay: 0.2s; }
+.countdown i:nth-child(3) { animation-delay: 0.35s; }
+.countdown i:nth-child(4) { animation-delay: 0.5s; }
+.countdown i:nth-child(5) {
+  animation-delay: 0.65s;
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+@keyframes tick {
+  from { opacity: 0; transform: scale(1.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.gate-title {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+}
+
+.gate-sub {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0 0 30px;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f5b63f, #e09616);
+  color: #1a1304;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: transform 0.14s, box-shadow 0.14s, filter 0.14s;
+  box-shadow: 0 6px 22px rgba(240, 169, 43, 0.22);
+}
+
+.primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(240, 169, 43, 0.32);
+}
+
+.primary-btn:disabled {
+  filter: grayscale(0.7);
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.gate-note {
+  margin-top: 22px;
+  font-size: 12px;
+  color: var(--muted-dim);
+  line-height: 1.6;
+}
+
+.alert {
+  margin: 18px 0 0;
+  padding: 11px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(248, 113, 107, 0.35);
+  background: rgba(248, 113, 107, 0.09);
+  color: #ffb9b5;
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: left;
+}
+
+/* ===================== Grille d'agents ===================== */
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.section-head h2 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.section-head hr {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+  gap: 18px;
+}
+
+/* Cadre de portrait : la pièce maîtresse de l'identité visuelle. */
+.frame {
+  --accent: var(--amber);
+  position: relative;
+  text-align: left;
+  padding: 20px 18px 18px;
+  min-height: 186px;
+  border: 1px solid var(--line-bright);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(130% 90% at 50% -25%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+    var(--panel);
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+  opacity: 0;
+  animation: reveal 0.44s ease-out forwards;
+}
+
+/* Les cartes se révèlent en séquence, comme une planche de portraits. */
+.frame:nth-child(1) { animation-delay: 0.04s; }
+.frame:nth-child(2) { animation-delay: 0.11s; }
+.frame:nth-child(3) { animation-delay: 0.18s; }
+.frame:nth-child(4) { animation-delay: 0.25s; }
+.frame:nth-child(5) { animation-delay: 0.32s; }
+.frame:nth-child(n + 6) { animation-delay: 0.39s; }
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Liseré d'accent en haut du cadre. */
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--accent);
+}
+
+/* Balayage de scan au survol. */
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    color-mix(in srgb, var(--accent) 13%, transparent) 50%,
+    transparent 62%
+  );
+  transform: translateX(-110%);
+  transition: transform 0.6s ease;
+}
+
+.frame:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.frame:hover::after {
+  transform: translateX(110%);
+}
+
+.frame:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Badge de numéro, encoché dans le coin. */
+.callsign {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 5px;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.frame-role {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 9px;
+}
+
+.frame-name {
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+
+.frame-tagline {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0 0 auto;
+}
+
+.frame-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 16px;
+}
+
+.tool-chip {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 2.5px 6px;
+  border-radius: 4px;
+  color: var(--muted-dim);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+}
+
+/* ===================== Vue de conversation ===================== */
+
+.chat {
+  --accent: var(--amber);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 118px);
+  min-height: 420px;
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+
+.chat-badge {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.chat-id h1 {
+  font-size: 19px;
+  margin: 0 0 2px;
+  font-weight: 650;
+}
+
+.chat-id p {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.empty {
+  margin: auto;
+  text-align: center;
+  color: var(--muted-dim);
+  font-size: 13.5px;
+  line-height: 1.7;
+  max-width: 340px;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 76ch;
+}
+
+.turn.user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.turn-who {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+}
+
+.turn.agent .turn-who {
+  color: var(--accent);
+}
+
+.bubble {
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  line-height: 1.68;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.turn.user .bubble {
+  background: var(--bg-elev);
+  border: 1px solid var(--line-bright);
+  border-bottom-right-radius: 4px;
+}
+
+.turn.agent .bubble {
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-bottom-left-radius: 4px;
+}
+
+.turn.error .bubble {
+  background: rgba(248, 113, 107, 0.09);
+  border: 1px solid rgba(248, 113, 107, 0.35);
+  color: #ffb9b5;
+}
+
+/* Bandeau d'activité : réflexion et usage d'outils. */
+.activity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+}
+
+.pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+
+.meta-line {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--muted-dim);
+}
+
+/* Zone de saisie */
+.composer {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  min-height: 50px;
+  max-height: 190px;
+  padding: 14px 16px;
+  border-radius: 11px;
+  border: 1px solid var(--line-bright);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14.5px;
+  line-height: 1.6;
+  transition: border-color 0.16s;
+}
+
+.composer textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.composer textarea::placeholder {
+  color: var(--muted-dim);
+}
+
+.send-btn {
+  flex-shrink: 0;
+  height: 50px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #10131b;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  transition: filter 0.14s, opacity 0.14s;
+}
+
+.send-btn:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.send-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* ===================== Panneau appareils ===================== */
+
+.devices {
+  margin-top: 40px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+}
+
+.devices h3 {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.device-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.device-row .grow {
+  flex: 1;
+}
+
+.device-row time {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted-dim);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 2px;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ===================== Divers ===================== */
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+}
+
+@media (max-width: 620px) {
+  .grid { grid-template-columns: 1fr; }
+  .gate-title { font-size: 23px; letter-spacing: 0.2em; }
+  .content { padding: 24px 16px 44px; }
+  .chat { height: calc(100vh - 104px); }
+}
+
+/* Respecte le réglage système de réduction des animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .frame { opacity: 1; }
+  .countdown i { opacity: 1; }
+}

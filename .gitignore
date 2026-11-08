@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Secrets et données locales
+.env
+backend/.env
+backend/data/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# OS / éditeurs
+.DS_Store
+.idea/
+.vscode/
+*.swp

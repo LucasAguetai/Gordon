@@ -1,0 +1,17 @@
+# Gordon — dépendances backend
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Moteur IA : Claude Code packagé en librairie.
+# Utilise l'authentification du CLI `claude` (abonnement), pas de clé API.
+claude-agent-sdk>=0.2.179
+
+# Authentification par passkey (WebAuthn / FIDO2)
+webauthn>=2.5.0
+
+# Sessions signées par cookie
+itsdangerous>=2.2.0
+
+# Configuration
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
