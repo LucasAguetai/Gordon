@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { resetAgent, sendMessage, type Agent } from "../api";
+import { hasPortrait } from "../portraits";
+import PortraitReel from "./PortraitReel";
 
 type Turn = {
   id: number;
@@ -110,10 +112,16 @@ export default function ChatView({ agent, onBack }: Props) {
         <button className="ghost-btn" onClick={onBack}>
           ← Équipe
         </button>
-        <div className="chat-badge">{agent.callsign}</div>
+        {hasPortrait(agent.id) && (
+          <div className="chat-badge">
+            <PortraitReel agentId={agent.id} state="uniform" size={44} instant />
+          </div>
+        )}
         <div className="chat-id">
           <h1>{agent.name}</h1>
-          <p>{agent.role}</p>
+          <p>
+            {agent.callsign} · {agent.role}
+          </p>
         </div>
         <div className="topbar-spacer" />
         <button

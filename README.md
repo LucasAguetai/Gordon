@@ -9,15 +9,20 @@ l'appel.**
 
 ---
 
-## L'équipe
+## Les spécialités
+
+Gordon est la console ; chaque carte est une spécialité.
 
 | № | Agent | Spécialité | Outils |
 |---|-------|-----------|--------|
-| 01 | **Gordon** | Coordination — oriente vers le bon spécialiste | recherche web |
-| 02 | **Atlas** | Finance — budget, épargne, projections | lecture seule |
-| 03 | **Mentor** | Révisions — fiches, quiz, plannings | fichiers |
-| 04 | **Vigie** | Veille — recherche et synthèse de sources | recherche web + lecture |
-| 05 | **Forge** | Développement — code, debug, architecture | fichiers + shell |
+| 01 | **Atlas** | Finance — budget, épargne, projections | lecture seule |
+| 02 | **Mentor** | Révisions — fiches, quiz, plannings | fichiers |
+| 03 | **Vigie** | Veille — recherche et synthèse de sources | recherche web + lecture |
+| 04 | **Forge** | Développement — code, debug, architecture | fichiers + shell |
+
+Chaque agent a un portrait en pixel art décliné en deux états. Écran
+verrouillé, l'équipe est en civil ; au déverrouillage les portraits défilent
+vers leur version en tenue, aux couleurs de la spécialité.
 
 ---
 
@@ -117,6 +122,29 @@ tout seul via `GET /api/agents`, il n'y a rien à toucher côté interface.
 Les outils disponibles : `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`,
 `WebSearch`, `WebFetch`. **Ne donne que le strict nécessaire** — la liste est
 appliquée côté serveur, un agent ne peut pas en sortir.
+
+### Lui dessiner un portrait
+
+Facultatif : sans portrait, la carte s'affiche simplement sans vignette.
+
+Les grilles vivent dans
+[`frontend/src/portraits.ts`](frontend/src/portraits.ts) — 16 × 16, un
+caractère par pixel, avec la légende des couleurs en tête de fichier. La tête
+(12 lignes) est commune aux deux états ; seul le buste (4 lignes) distingue
+le civil de la tenue.
+
+Tu peux retoucher une grille à la main, à condition de garder exactement 16
+caractères par ligne. Pour en créer une nouvelle, utilise plutôt le
+générateur :
+
+```bash
+cd frontend && python3 scripts/genportraits.py
+```
+
+Il décrit chaque ligne en paires (caractère, répétitions), vérifie les
+dimensions et réécrit `portraits.ts` — les largeurs sont donc justes par
+construction. Compter les chaînes à la main est la façon la plus sûre de se
+tromper.
 
 ---
 

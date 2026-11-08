@@ -6,13 +6,19 @@ import {
   supportsPasskeys,
   type AuthStatus,
 } from "../api";
+import { portraitIds } from "../portraits";
+import PortraitReel from "./PortraitReel";
 
 type Props = { onUnlocked: () => void };
+
+/** Défilement des portraits (0.9s en CSS) + un battement pour le lire. */
+const REEL_MS = 1050;
 
 export default function LoginGate({ onUnlocked }: Props) {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suited, setSuited] = useState(false);
 
   useEffect(() => {
     getAuthStatus()
@@ -27,17 +33,17 @@ export default function LoginGate({ onUnlocked }: Props) {
     setError(null);
     try {
       await action();
-      onUnlocked();
+      // L'équipe passe en tenue, puis la console s'ouvre.
+      setSuited(true);
+      window.setTimeout(onUnlocked, REEL_MS);
     } catch (e) {
-      // L'utilisateur qui annule la fenêtre système n'est pas une erreur à
-      // signaler bruyamment.
       const err = e as Error;
+      // Annuler la fenêtre système n'est pas une erreur à signaler.
       if (err.name === "NotAllowedError" || err.name === "AbortError") {
         setError(null);
       } else {
         setError(err.message || "Échec de l'authentification.");
       }
-    } finally {
       setBusy(false);
     }
   }
@@ -53,6 +59,22 @@ export default function LoginGate({ onUnlocked }: Props) {
           <i>3</i>
           <i>2</i>
           <i>1</i>
+        </div>
+
+        <div className="gate-roster" aria-hidden="true">
+          {portraitIds.map((id, i) => (
+            <div
+              className="roster-slot"
+              key={id}
+              style={{ animationDelay: `${0.75 + i * 0.09}s` }}
+            >
+              <PortraitReel
+                agentId={id}
+                state={suited ? "uniform" : "civil"}
+                size={74}
+              />
+            </div>
+          ))}
         </div>
 
         <h1 className="gate-title">Gordon</h1>
@@ -71,9 +93,11 @@ export default function LoginGate({ onUnlocked }: Props) {
         {status !== null && supported && (
           <>
             <p className="gate-sub">
-              {firstRun
-                ? "Première mise en service. Enregistre une passkey pour devenir le propriétaire de cette instance."
-                : "Station verrouillée. Authentifie-toi avec ta passkey."}
+              {suited
+                ? "Équipe en tenue. Ouverture de la console…"
+                : firstRun
+                  ? "Première mise en service. Enregistre une passkey pour devenir le propriétaire de cette instance."
+                  : "Station verrouillée. Authentifie-toi avec ta passkey."}
             </p>
 
             {firstRun ? (
@@ -94,7 +118,7 @@ export default function LoginGate({ onUnlocked }: Props) {
               </button>
             )}
 
-            {status.registration_open && !firstRun && (
+            {status.registration_open && !firstRun && !suited && (
               <p className="gate-note">
                 L'inscription est encore ouverte en configuration. Pense à
                 repasser <code>GORDON_ALLOW_REGISTRATION</code> à{" "}
@@ -102,7 +126,7 @@ export default function LoginGate({ onUnlocked }: Props) {
               </p>
             )}
 
-            {firstRun && (
+            {firstRun && !suited && (
               <p className="gate-note">
                 Dès cette passkey enregistrée, l'inscription se ferme
                 automatiquement. Tu pourras ajouter d'autres appareils depuis

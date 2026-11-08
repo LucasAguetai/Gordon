@@ -1,4 +1,6 @@
 import type { Agent } from "../api";
+import { hasPortrait } from "../portraits";
+import PortraitReel from "./PortraitReel";
 
 type Props = {
   agents: Agent[];
@@ -9,7 +11,7 @@ export default function AgentGrid({ agents, onSelect }: Props) {
   return (
     <>
       <div className="section-head">
-        <h2>Équipe</h2>
+        <h2>Spécialités</h2>
         <hr />
       </div>
 
@@ -22,6 +24,13 @@ export default function AgentGrid({ agents, onSelect }: Props) {
             onClick={() => onSelect(agent)}
           >
             <span className="callsign">{agent.callsign}</span>
+
+            {hasPortrait(agent.id) && (
+              <div className="frame-portrait">
+                <PortraitReel agentId={agent.id} state="uniform" size={64} instant />
+              </div>
+            )}
+
             <div className="frame-role">{agent.role}</div>
             <h3 className="frame-name">{agent.name}</h3>
             <p className="frame-tagline">{agent.tagline}</p>
