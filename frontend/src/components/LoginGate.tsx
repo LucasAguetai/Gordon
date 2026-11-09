@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getAuthStatus,
   loginWithPasskey,
@@ -11,19 +11,36 @@ import PortraitReel from "./PortraitReel";
 
 type Props = { onUnlocked: () => void };
 
-/** Défilement des portraits (0.9s en CSS) + un battement pour le lire. */
-const REEL_MS = 1050;
+/**
+ * Rythme de la séquence de déverrouillage.
+ *
+ * La fenêtre système de la passkey recouvre la page et met un instant à
+ * disparaître après validation. Sans cette pause, les portraits passent en
+ * tenue derrière le popup et on rate complètement l'animation.
+ */
+const HOLD_MS = 900; // le temps que la fenêtre système s'efface
+const REEL_MS = 900; // défilement, aligné sur la transition CSS
+const SETTLE_MS = 450; // un battement pour voir l'équipe en tenue
 
 export default function LoginGate({ onUnlocked }: Props) {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suited, setSuited] = useState(false);
+  const timers = useRef<number[]>([]);
 
   useEffect(() => {
     getAuthStatus()
       .then(setStatus)
       .catch((e) => setError(e.message));
+  }, []);
+
+  // La séquence de déverrouillage est différée : sans ce nettoyage, un
+  // démontage entre-temps laisserait des minuteurs modifier un composant
+  // qui n'existe plus.
+  useEffect(() => {
+    const pending = timers.current;
+    return () => pending.forEach(window.clearTimeout);
   }, []);
 
   const supported = supportsPasskeys();
@@ -33,9 +50,12 @@ export default function LoginGate({ onUnlocked }: Props) {
     setError(null);
     try {
       await action();
-      // L'équipe passe en tenue, puis la console s'ouvre.
-      setSuited(true);
-      window.setTimeout(onUnlocked, REEL_MS);
+      // On laisse la fenêtre système s'effacer, l'équipe passe en tenue,
+      // puis la console s'ouvre.
+      timers.current.push(
+        window.setTimeout(() => setSuited(true), HOLD_MS),
+        window.setTimeout(onUnlocked, HOLD_MS + REEL_MS + SETTLE_MS),
+      );
     } catch (e) {
       const err = e as Error;
       // Annuler la fenêtre système n'est pas une erreur à signaler.

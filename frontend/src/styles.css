@@ -428,6 +428,11 @@ button {
 }
 
 .frame-portrait {
+  /* Au-dessus du balayage de .frame::after : sans ça, le voile teinté à la
+     couleur de l'agent passe sur le visage au survol et le baudrier semble
+     changer de couleur. */
+  position: relative;
+  z-index: 1;
   width: 96px;
   height: 96px;
   margin-bottom: 14px;

@@ -110,29 +110,69 @@ function render(agent, clothesColor) {
 }
 
 /**
+ * Récupère la silhouette exacte de la chemise dans le SVG rendu.
+ *
+ * Le vêtement est défini dans `<defs>` en coordonnées locales, puis posé
+ * sur le canevas par un `<use transform=…>`. On réutilise les deux pour
+ * découper le baudrier : une forme approximative dessinée à la main
+ * débordait de la chemise et laissait la bande traîner sur le fond de la
+ * carte — ce qui se voyait comme une zone grise sous l'épaule.
+ */
+function shirtSilhouette(svg) {
+  const use = svg.match(/<use transform="([^"]*)" href="#(clothes-[^"]+)"\s*\/>/);
+  if (!use) throw new Error("placement du vêtement introuvable");
+  const [, transform, groupId] = use;
+
+  const group = svg.match(new RegExp(`<g id="${groupId}">([\\s\\S]*?)</g>`));
+  if (!group) throw new Error(`groupe ${groupId} introuvable`);
+
+  // Le premier tracé du groupe est le contour du vêtement ; les suivants
+  // sont le col et les plis.
+  const path = group[1].match(/<path d="([^"]+)"/);
+  if (!path) throw new Error("contour du vêtement introuvable");
+
+  return { d: path[1], transform };
+}
+
+/**
  * Baudrier diagonal, de l'épaule gauche du personnage vers sa hanche
  * droite. Le personnage nous fait face : son épaule gauche est donc à
  * droite de l'image, et la bande descend de droite à gauche.
  *
- * Le tracé de découpe suit la ligne des épaules d'avataaars pour que la
- * bande s'arrête au torse au lieu de barrer tout le cadre.
+ * La pente est volontairement marquée pour que l'extrémité basse arrive à
+ * la taille. Une diagonale plus douce traverse le buste presque à
+ * l'horizontale et ne lit plus comme un baudrier.
  */
-function sash(agent) {
+const SASH = {
+  x1: 214,
+  y1: 192,
+  x2: 116,
+  y2: 290,
+  width: 31,
+  /** Décalage du liseré, le long de la normale à la bande. */
+  gloss: 17,
+};
+
+function sash(agent, shirt) {
   const id = `sash-${agent.id}`;
+  const { x1, y1, x2, y2, width, gloss } = SASH;
   return [
     `<defs><clipPath id="${id}">`,
-    `<path d="M44,214 Q140,194 236,214 L248,290 L32,290 Z"/>`,
+    `<path transform="${shirt.transform}" d="${shirt.d}"/>`,
     `</clipPath></defs>`,
     `<g clip-path="url(#${id})">`,
-    `<line x1="198" y1="208" x2="84" y2="288" stroke="${agent.accent}" stroke-width="30"/>`,
-    `<line x1="216" y1="208" x2="102" y2="288" stroke="rgba(255,255,255,.22)" stroke-width="7"/>`,
+    `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"`,
+    ` stroke="${agent.accent}" stroke-width="${width}"/>`,
+    `<line x1="${x1 + gloss}" y1="${y1}" x2="${x2 + gloss}" y2="${y2}"`,
+    ` stroke="rgba(255,255,255,.2)" stroke-width="6"/>`,
     `</g>`,
   ].join("");
 }
 
 /** Insère le baudrier juste avant la fermeture du SVG. */
 function withSash(svg, agent) {
-  return svg.replace(/<\/svg>\s*$/, `${sash(agent)}</svg>`);
+  const shirt = shirtSilhouette(svg);
+  return svg.replace(/<\/svg>\s*$/, `${sash(agent, shirt)}</svg>`);
 }
 
 const entries = AGENTS.map((agent) => {
