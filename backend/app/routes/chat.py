@@ -1,4 +1,4 @@
-"""Routes de conversation avec les agents."""
+"""Routes des agents : liste, création, suppression, conversation."""
 
 from __future__ import annotations
 
@@ -16,9 +16,45 @@ class Message(BaseModel):
     prompt: str = Field(min_length=1, max_length=50_000)
 
 
+class NewAgent(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    role: str = Field(min_length=1, max_length=40)
+    tagline: str = Field(default="", max_length=120)
+    accent: str = Field(min_length=7, max_length=7)
+    tools: list[str] = Field(default_factory=list, max_length=16)
+    system_prompt: str = Field(min_length=1, max_length=20_000)
+    look: dict = Field(default_factory=dict)
+    effort: str | None = None
+
+
 @router.get("/agents")
 def list_agents(user_id: str = Depends(current_user)) -> dict:
-    return {"agents": registry.listing()}
+    return {"agents": registry.listing(), "tools": registry.TOOL_CATALOG}
+
+
+@router.post("/agents", status_code=status.HTTP_201_CREATED)
+def create_agent(body: NewAgent, user_id: str = Depends(current_user)) -> dict:
+    try:
+        spec = registry.create(
+            name=body.name,
+            role=body.role,
+            tagline=body.tagline,
+            accent=body.accent,
+            tools=body.tools,
+            system_prompt=body.system_prompt,
+            look=body.look,
+            effort=body.effort,
+        )
+    except registry.AgentError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return {"agent": spec.public()}
+
+
+@router.delete("/agents/{agent_id}")
+def delete_agent(agent_id: str, user_id: str = Depends(current_user)) -> dict:
+    if not registry.delete(agent_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Agent inconnu.")
+    return {"ok": True}
 
 
 @router.post("/agents/{agent_id}/chat")

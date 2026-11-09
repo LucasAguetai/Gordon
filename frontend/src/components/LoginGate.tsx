@@ -6,7 +6,6 @@ import {
   supportsPasskeys,
   type AuthStatus,
 } from "../api";
-import { portraitIds } from "../portraits";
 import PortraitReel from "./PortraitReel";
 
 type Props = { onUnlocked: () => void };
@@ -82,14 +81,16 @@ export default function LoginGate({ onUnlocked }: Props) {
         </div>
 
         <div className="gate-roster" aria-hidden="true">
-          {portraitIds.map((id, i) => (
+          {(status?.roster ?? []).slice(0, 6).map((member, i) => (
             <div
               className="roster-slot"
-              key={id}
+              key={i}
               style={{ animationDelay: `${0.75 + i * 0.09}s` }}
             >
               <PortraitReel
-                agentId={id}
+                look={member.look}
+                accent={member.accent}
+                id={`roster-${i}`}
                 state={suited ? "uniform" : "civil"}
                 size={88}
               />

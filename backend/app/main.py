@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import db
+from .agents import registry
 from .config import settings
 from .routes import auth, chat
 
@@ -48,6 +49,7 @@ def locate_cli() -> Path | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init()
+    registry.seed_if_empty()
 
     if locate_cli() is None:
         print(

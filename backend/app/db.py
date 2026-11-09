@@ -39,6 +39,21 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, agent_id)
 );
+
+CREATE TABLE IF NOT EXISTS agents (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    role            TEXT NOT NULL,
+    tagline         TEXT NOT NULL,
+    accent          TEXT NOT NULL,
+    tools           TEXT NOT NULL,   -- tableau JSON
+    system_prompt   TEXT NOT NULL,
+    look            TEXT NOT NULL,   -- objet JSON décrivant l'avatar
+    effort          TEXT,
+    needs_workspace INTEGER NOT NULL DEFAULT 0,
+    position        INTEGER NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -169,3 +184,55 @@ def clear_agent_session(user_id: str, agent_id: str) -> None:
             "DELETE FROM agent_sessions WHERE user_id = ? AND agent_id = ?",
             (user_id, agent_id),
         )
+
+
+# --- Agents ---------------------------------------------------------------
+
+
+def list_agents() -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM agents ORDER BY position, created_at"
+        ).fetchall()
+
+
+def get_agent(agent_id: str) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM agents WHERE id = ?", (agent_id,)
+        ).fetchone()
+
+
+def agent_count() -> int:
+    with connect() as conn:
+        return conn.execute("SELECT COUNT(*) AS n FROM agents").fetchone()["n"]
+
+
+def next_position() -> int:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(MAX(position), 0) + 1 AS n FROM agents"
+        ).fetchone()
+        return row["n"]
+
+
+def insert_agent(**fields) -> None:
+    columns = ", ".join(fields)
+    holders = ", ".join("?" for _ in fields)
+    with connect() as conn:
+        conn.execute(
+            f"INSERT INTO agents ({columns}) VALUES ({holders})",
+            tuple(fields.values()),
+        )
+
+
+def delete_agent(agent_id: str) -> bool:
+    """Supprime un agent et le fil de conversation qui lui est rattaché.
+
+    Sans le second DELETE, recréer un agent sous le même identifiant
+    reprendrait la conversation du précédent.
+    """
+    with connect() as conn:
+        cur = conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
+        conn.execute("DELETE FROM agent_sessions WHERE agent_id = ?", (agent_id,))
+        return cur.rowcount > 0

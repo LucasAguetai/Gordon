@@ -9,13 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dicebear/core": "^10.7.0",
+    "@dicebear/styles": "^10.6.0",
     "@simplewebauthn/browser": "^13.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@dicebear/core": "^10.7.0",
-    "@dicebear/styles": "^10.6.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

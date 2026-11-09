@@ -4,6 +4,8 @@ import {
   browserSupportsWebAuthn,
 } from "@simplewebauthn/browser";
 
+import type { Look } from "./avatar";
+
 export type Agent = {
   id: string;
   name: string;
@@ -12,12 +14,28 @@ export type Agent = {
   tagline: string;
   accent: string;
   tools: string[];
+  look: Partial<Look>;
 };
+
+/** Ce que l'écran verrouillé connaît de l'équipe : l'apparence, rien de plus. */
+export type RosterEntry = { accent: string; look: Partial<Look> };
 
 export type AuthStatus = {
   configured: boolean;
   registration_open: boolean;
   rp_id: string;
+  roster: RosterEntry[];
+};
+
+export type NewAgent = {
+  name: string;
+  role: string;
+  tagline: string;
+  accent: string;
+  tools: string[];
+  system_prompt: string;
+  look: Look;
+  effort: string | null;
 };
 
 export type Device = {
@@ -100,7 +118,19 @@ export const removeDevice = (id: string) =>
 
 // --- Agents --------------------------------------------------------------
 
-export const getAgents = () => request<{ agents: Agent[] }>("/api/agents");
+export const getAgents = () =>
+  request<{ agents: Agent[]; tools: Record<string, string> }>("/api/agents");
+
+export const createAgent = (agent: NewAgent) =>
+  request<{ agent: Agent }>("/api/agents", {
+    method: "POST",
+    body: JSON.stringify(agent),
+  });
+
+export const deleteAgent = (id: string) =>
+  request<{ ok: boolean }>(`/api/agents/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 
 export const resetAgent = (agentId: string) =>
   request<{ ok: boolean }>(`/api/agents/${agentId}/reset`, { method: "POST" });

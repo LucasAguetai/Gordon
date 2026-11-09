@@ -381,6 +381,14 @@ button {
 }
 
 /* Balayage de scan au survol. */
+/* Balayage de scan au survol.
+ *
+ * Animation à usage unique plutôt que transition réversible : avec une
+ * transition, quitter la carte faisait repartir le voile en arrière en
+ * retraversant le visuel, et un aller-retour rapide le laissait garé au
+ * milieu le temps de finir sa course. On voyait donc un balayage sur une
+ * carte qu'on ne survolait plus — facile à prendre pour la couleur du
+ * voisin. Ici, le voile revient hors cadre instantanément. */
 .frame::after {
   content: "";
   position: absolute;
@@ -393,7 +401,19 @@ button {
     transparent 62%
   );
   transform: translateX(-110%);
-  transition: transform 0.6s ease;
+}
+
+.frame:hover::after {
+  animation: sweep 0.72s ease-out;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(110%);
+  }
 }
 
 .frame:hover {
@@ -402,9 +422,6 @@ button {
   box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.frame:hover::after {
-  transform: translateX(110%);
-}
 
 .frame:focus-visible {
   outline: 2px solid var(--accent);
@@ -485,6 +502,320 @@ button {
   color: var(--muted-dim);
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid var(--line);
+}
+
+/* Zone cliquable qui couvre la carte. Elle est au-dessus du contenu pour
+   que le clic porte partout, et la suppression passe encore au-dessus. */
+.frame-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: none;
+  background: none;
+  border-radius: var(--radius);
+}
+
+.frame-hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.frame-del {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted-dim);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.16s, color 0.16s, border-color 0.16s;
+}
+
+.frame:hover .frame-del,
+.frame-del:focus-visible {
+  opacity: 1;
+}
+
+.frame-del:hover {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: rgba(248, 113, 107, 0.12);
+}
+
+.frame-confirm {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 3;
+  padding: 12px 14px;
+  background: rgba(8, 11, 18, 0.94);
+  backdrop-filter: blur(4px);
+  border-top: 1px solid rgba(248, 113, 107, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.frame-confirm div {
+  display: flex;
+  gap: 14px;
+}
+
+.link-btn.neutral {
+  color: var(--muted);
+}
+
+/* Carte d'ajout : même cadre, contenu réduit à l'essentiel. */
+.frame-new {
+  --accent: var(--line-bright);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.frame-new::before {
+  display: none;
+}
+
+.frame-new:hover {
+  --accent: var(--amber);
+  color: var(--text);
+}
+
+.frame-new .plus {
+  font-size: 30px;
+  line-height: 1;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.frame-new .frame-tagline {
+  margin: 0;
+  max-width: 22ch;
+}
+
+/* ===================== Panneau de création ===================== */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(3, 5, 10, 0.72);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: start center;
+  padding: 36px 20px;
+  overflow-y: auto;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 680px;
+  border: 1px solid var(--line-bright);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet-head h2 {
+  flex: 1;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.sheet-body {
+  display: flex;
+  gap: 22px;
+  padding: 22px;
+}
+
+.sheet-portrait {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.sheet-fields {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sheet-fields .wide {
+  grid-column: 1 / -1;
+}
+
+.sheet-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sheet-fields label > span,
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.field-label small,
+.sheet-fields label > span small {
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-dim);
+  line-height: 1.5;
+}
+
+.sheet input[type="text"],
+.sheet input:not([type]),
+.sheet textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line-bright);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.sheet textarea {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.sheet input:focus,
+.sheet textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.swatch.on {
+  border-color: var(--text);
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.check {
+  flex-direction: row !important;
+  align-items: baseline;
+  gap: 7px !important;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.check code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+}
+
+.check small {
+  color: var(--muted-dim);
+  font-size: 10.5px;
+}
+
+.check:hover {
+  border-color: var(--line-bright);
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.segmented button {
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--line-bright);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.segmented button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.sheet-foot {
+  padding: 0 22px 22px;
+}
+
+.sheet .alert {
+  margin: 0 22px;
+}
+
+@media (max-width: 640px) {
+  .sheet-body {
+    flex-direction: column;
+  }
+  .sheet-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ===================== Vue de conversation ===================== */

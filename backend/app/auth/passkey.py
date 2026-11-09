@@ -91,10 +91,21 @@ def registration_open() -> bool:
 
 
 def status() -> dict:
+    """État de l'instance, consultable sans être authentifié.
+
+    `roster` sert uniquement à dessiner la planche de portraits de l'écran
+    verrouillé : la couleur et l'apparence, rien d'autre. Ni identifiant, ni
+    nom, ni spécialité ne sont exposés avant authentification.
+    """
+    from ..agents import registry
+
     return {
         "configured": db.credential_count() > 0,
         "registration_open": registration_open(),
         "rp_id": settings.rp_id,
+        "roster": [
+            {"accent": a["accent"], "look": a["look"]} for a in registry.listing()
+        ],
     }
 
 

@@ -1,8 +1,11 @@
 import { useId, useMemo } from "react";
-import { portraitFor, type PortraitState } from "../portraits";
+import { renderPortrait, type Look, type PortraitState } from "../avatar";
 
 type Props = {
-  agentId: string;
+  look: Partial<Look> | null | undefined;
+  accent: string;
+  /** Rend les identifiants internes du SVG uniques et stables. */
+  id: string;
   state: PortraitState;
   size: number;
   /** Désactive la transition — pour les vignettes déjà en tenue. */
@@ -12,11 +15,10 @@ type Props = {
 /**
  * Préfixe les identifiants internes du SVG.
  *
- * Les portraits sont pré-générés, donc deux rendus du même agent portent
- * exactement les mêmes `id` (masques, tracés de découpe). Affichés en même
- * temps dans la page, les doublons font pointer les masques sur le mauvais
- * élément et le portrait se décompose. On réécrit donc les identifiants à
- * chaque instance.
+ * Deux portraits construits à partir de la même description portent les
+ * mêmes `id` (masques, tracés de découpe). Affichés en même temps dans la
+ * page, les doublons font pointer les masques sur le mauvais élément et le
+ * portrait se décompose.
  */
 function namespaceIds(svg: string, prefix: string): string {
   return svg
@@ -25,10 +27,19 @@ function namespaceIds(svg: string, prefix: string): string {
     .replace(/((?:xlink:)?href)="#([^"]+)"/g, `$1="#${prefix}-$2"`);
 }
 
-function Face({ svg, prefix }: { svg: string; prefix: string }) {
-  const html = useMemo(() => namespaceIds(svg, prefix), [svg, prefix]);
-  // Contenu produit au build par scripts/genportraits.mjs : aucune donnée
-  // utilisateur n'y transite.
+function Face({
+  look,
+  accent,
+  id,
+  state,
+  prefix,
+}: Omit<Props, "size" | "instant"> & { prefix: string }) {
+  const html = useMemo(
+    () => namespaceIds(renderPortrait(look, state, accent, id), prefix),
+    [look, accent, id, state, prefix],
+  );
+  // Contenu produit localement par avatar.ts : aucune donnée utilisateur
+  // n'y transite, le texte saisi dans le formulaire ne touche pas le SVG.
   return <div className="reel-cell" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -36,14 +47,17 @@ function Face({ svg, prefix }: { svg: string; prefix: string }) {
  * Portrait à deux états montés l'un au-dessus de l'autre. Le passage de
  * « civil » à « tenue » fait défiler la bobine vers le haut.
  */
-export default function PortraitReel({ agentId, state, size, instant }: Props) {
+export default function PortraitReel({
+  look,
+  accent,
+  id,
+  state,
+  size,
+  instant,
+}: Props) {
   const rawId = useId();
   // useId produit des deux-points, qui cassent les références url(#…).
   const prefix = rawId.replace(/[^a-zA-Z0-9]/g, "");
-
-  const civil = portraitFor(agentId, "civil");
-  const uniform = portraitFor(agentId, "uniform");
-  if (!civil || !uniform) return null;
 
   return (
     <div
@@ -54,8 +68,20 @@ export default function PortraitReel({ agentId, state, size, instant }: Props) {
         className="reel-track"
         style={{ transform: state === "uniform" ? `translateY(-${size}px)` : "none" }}
       >
-        <Face svg={civil} prefix={`${prefix}c`} />
-        <Face svg={uniform} prefix={`${prefix}u`} />
+        <Face
+          look={look}
+          accent={accent}
+          id={id}
+          state="civil"
+          prefix={`${prefix}c`}
+        />
+        <Face
+          look={look}
+          accent={accent}
+          id={id}
+          state="uniform"
+          prefix={`${prefix}u`}
+        />
       </div>
     </div>
   );

@@ -11,7 +11,9 @@ l'appel.**
 
 ## Les spécialités
 
-Gordon est la console ; chaque carte est une spécialité.
+Gordon est la console ; chaque carte est une spécialité. Elles se créent et
+se suppriment depuis l'interface — les quatre ci-dessous sont les valeurs
+d'amorçage du premier démarrage, pas des agents privilégiés.
 
 | № | Agent | Spécialité | Outils |
 |---|-------|-----------|--------|
@@ -100,58 +102,42 @@ la console, en étant déjà connecté. Ce chemin ne rouvre rien publiquement.
 
 ---
 
-## Ajouter un agent
+## Créer et supprimer des agents
 
-Tout est dans [`backend/app/agents/registry.py`](backend/app/agents/registry.py).
-Ajoute une entrée `AgentSpec` au dictionnaire `AGENTS` : le front le découvre
-tout seul via `GET /api/agents`, il n'y a rien à toucher côté interface.
+Depuis la console : **« Nouvel agent »** ouvre un formulaire (nom,
+spécialité, couleur, outils, profondeur de réflexion, prompt système), avec
+un aperçu du visage et un bouton pour en tirer un autre. Le **✕** au survol
+d'une carte la supprime, après confirmation.
 
-```python
-"juridique": AgentSpec(
-    id="juridique",
-    name="Themis",
-    callsign="06",
-    role="Juridique",
-    tagline="Contrats, CGU, conformité.",
-    accent="#60a5fa",
-    tools=RESEARCH,
-    effort="high",
-    system_prompt="...",
-),
-```
+Supprimer un agent **efface aussi le fil de conversation** qui lui est
+rattaché. C'est volontaire : sans ça, recréer un agent sous le même nom
+reprendrait la conversation du précédent.
 
 Les outils disponibles : `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`,
 `WebSearch`, `WebFetch`. **Ne donne que le strict nécessaire** — la liste est
-appliquée côté serveur, un agent ne peut pas en sortir.
+une liste blanche appliquée côté serveur, un agent ne peut pas en sortir, et
+tout outil inconnu est refusé à la création.
 
-### Lui donner un portrait
+Les agents vivent en base
+([`backend/app/db.py`](backend/app/db.py)) ; les valeurs d'amorçage du
+premier démarrage sont dans
+[`registry.py`](backend/app/agents/registry.py) sous `SEEDS`.
 
-Facultatif : sans portrait, la carte s'affiche simplement sans vignette.
+### Les portraits
 
-Les portraits sont des avatars **avataaars** composés agent par agent, puis
-pré-générés en SVG. Ajoute une entrée dans le tableau `AGENTS` de
-[`frontend/scripts/genportraits.mjs`](frontend/scripts/genportraits.mjs) et
-relance :
+Les visages sont des avatars **avataaars** construits dans le navigateur par
+[`frontend/src/avatar.ts`](frontend/src/avatar.ts), à partir d'une
+description (`look`) stockée avec l'agent : coiffure, couleurs, regard,
+bouche, lunettes. La tenue de service est ajoutée par-dessus — combinaison
+bleue commune et baudrier à la couleur de l'agent.
 
-```bash
-cd frontend && node scripts/genportraits.mjs
-```
+Les listes de variantes y sont volontairement restreintes : l'inventaire
+complet contient des expressions (pleurs, nausée, yeux en cœur) qui n'ont
+pas leur place sur une fiche d'agent.
 
-Chaque agent y déclare sa couleur d'accent (celle du baudrier), sa tenue
-civile et son `look` — coiffure, yeux, bouche, accessoires. **Compose les
-traits à la main plutôt que de laisser la graine décider** : au hasard, on
-obtient quatre inconnus aux expressions incohérentes, pas une équipe. Les
-variantes disponibles sont listées dans la définition du style :
-
-```bash
-node -e "const d=require('@dicebear/styles/dist/avataaars.min.json');
-         console.log(Object.keys(d.components.top.variants).join(', '))"
-```
-
-> Les SVG sont pré-générés et non construits dans le navigateur : la
-> définition du style pèse 125 Ko à elle seule, contre ~40 Ko pour les huit
-> portraits finis. DiceBear reste donc une `devDependency` — rien n'est
-> embarqué à l'exécution.
+> Ces avatars étaient pré-générés au build tant que la liste était figée.
+> Depuis qu'on peut créer des agents, le style est embarqué et rendu à
+> l'exécution : un agent inventé doit obtenir un visage immédiatement.
 
 ---
 
@@ -162,9 +148,9 @@ backend/
   app/
     main.py              FastAPI, CORS, détection du CLI
     config.py            configuration par variables d'environnement
-    db.py                SQLite — passkeys, sessions d'agents
+    db.py                SQLite — passkeys, agents, fils de conversation
     agents/
-      registry.py        ← définition des agents
+      registry.py        CRUD des agents + valeurs d'amorçage
       runner.py          pont vers le Claude Agent SDK, streaming SSE
     auth/
       passkey.py         WebAuthn (enregistrement, vérification)
@@ -173,7 +159,9 @@ backend/
 frontend/
   src/
     api.ts               client HTTP + découpage du flux SSE
-    components/          LoginGate, AgentGrid, ChatView, DevicePanel
+    avatar.ts            construction des portraits et du baudrier
+    components/          LoginGate, AgentGrid, AgentForm, ChatView,
+                         PortraitReel, DevicePanel
 ```
 
 Quelques choix à connaître :
