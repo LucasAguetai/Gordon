@@ -20,9 +20,10 @@ Gordon est la console ; chaque carte est une spécialité.
 | 03 | **Vigie** | Veille — recherche et synthèse de sources | recherche web + lecture |
 | 04 | **Forge** | Développement — code, debug, architecture | fichiers + shell |
 
-Chaque agent a un portrait en pixel art décliné en deux états. Écran
-verrouillé, l'équipe est en civil ; au déverrouillage les portraits défilent
-vers leur version en tenue, aux couleurs de la spécialité.
+Chaque agent a un portrait décliné en deux états. Écran verrouillé, l'équipe
+est en civil ; au déverrouillage les portraits défilent vers leur tenue de
+service — une combinaison bleue commune, barrée d'un baudrier à la couleur de
+la spécialité, de l'épaule gauche vers la hanche droite.
 
 ---
 
@@ -123,28 +124,34 @@ Les outils disponibles : `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`,
 `WebSearch`, `WebFetch`. **Ne donne que le strict nécessaire** — la liste est
 appliquée côté serveur, un agent ne peut pas en sortir.
 
-### Lui dessiner un portrait
+### Lui donner un portrait
 
 Facultatif : sans portrait, la carte s'affiche simplement sans vignette.
 
-Les grilles vivent dans
-[`frontend/src/portraits.ts`](frontend/src/portraits.ts) — 16 × 16, un
-caractère par pixel, avec la légende des couleurs en tête de fichier. La tête
-(12 lignes) est commune aux deux états ; seul le buste (4 lignes) distingue
-le civil de la tenue.
-
-Tu peux retoucher une grille à la main, à condition de garder exactement 16
-caractères par ligne. Pour en créer une nouvelle, utilise plutôt le
-générateur :
+Les portraits sont des avatars **avataaars** composés agent par agent, puis
+pré-générés en SVG. Ajoute une entrée dans le tableau `AGENTS` de
+[`frontend/scripts/genportraits.mjs`](frontend/scripts/genportraits.mjs) et
+relance :
 
 ```bash
-cd frontend && python3 scripts/genportraits.py
+cd frontend && node scripts/genportraits.mjs
 ```
 
-Il décrit chaque ligne en paires (caractère, répétitions), vérifie les
-dimensions et réécrit `portraits.ts` — les largeurs sont donc justes par
-construction. Compter les chaînes à la main est la façon la plus sûre de se
-tromper.
+Chaque agent y déclare sa couleur d'accent (celle du baudrier), sa tenue
+civile et son `look` — coiffure, yeux, bouche, accessoires. **Compose les
+traits à la main plutôt que de laisser la graine décider** : au hasard, on
+obtient quatre inconnus aux expressions incohérentes, pas une équipe. Les
+variantes disponibles sont listées dans la définition du style :
+
+```bash
+node -e "const d=require('@dicebear/styles/dist/avataaars.min.json');
+         console.log(Object.keys(d.components.top.variants).join(', '))"
+```
+
+> Les SVG sont pré-générés et non construits dans le navigateur : la
+> définition du style pèse 125 Ko à elle seule, contre ~40 Ko pour les huit
+> portraits finis. DiceBear reste donc une `devDependency` — rien n'est
+> embarqué à l'exécution.
 
 ---
 
@@ -252,5 +259,15 @@ les agents, ni l'auth, ni l'interface.
 
 ## Licence et mentions
 
-Projet personnel. L'identité visuelle est une création originale d'inspiration
-retro-futuriste ; aucun asset, logo ou marque de tiers n'est repris.
+Projet personnel. L'habillage de l'interface est une création originale
+d'inspiration retro-futuriste ; aucun asset, logo ou marque de tiers n'est
+repris.
+
+Les portraits sont des remix d'[Avataaars](https://avataaars.com/) par Pablo
+Stanley, libres d'usage personnel et commercial, générés avec
+[DiceBear](https://www.dicebear.com/). La combinaison et le baudrier sont
+ajoutés par-dessus.
+
+> Si tu changes de style d'avatar, vérifie sa licence : plusieurs styles
+> DiceBear (micah, personas, adventurer, big-smile…) sont en **CC BY 4.0** et
+> imposent alors une attribution visible sur le site.
