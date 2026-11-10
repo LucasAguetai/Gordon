@@ -84,7 +84,9 @@ def _build_options(spec: AgentSpec, resume: str | None) -> ClaudeAgentOptions:
     if spec.effort:
         options.effort = spec.effort
     if spec.needs_workspace:
-        options.cwd = str(settings.workspace_dir)
+        # Chaque agent a son propre dossier ; on retombe sur le dossier
+        # partagé si aucun n'a été choisi (agents créés avant ce réglage).
+        options.cwd = spec.workspace or str(settings.workspace_dir)
     if settings.cli_path:
         options.cli_path = settings.cli_path
 

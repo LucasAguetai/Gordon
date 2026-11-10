@@ -51,10 +51,17 @@ CREATE TABLE IF NOT EXISTS agents (
     look            TEXT NOT NULL,   -- objet JSON décrivant l'avatar
     effort          TEXT,
     needs_workspace INTEGER NOT NULL DEFAULT 0,
+    workspace       TEXT,            -- dossier de travail, si outils fichiers
     position        INTEGER NOT NULL,
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """
+
+# Colonnes ajoutées après coup. CREATE TABLE IF NOT EXISTS ne touche pas une
+# table déjà créée : sans ça, une base existante garderait l'ancien schéma.
+MIGRATIONS: list[tuple[str, str]] = [
+    ("agents", "workspace TEXT"),
+]
 
 
 @contextmanager
@@ -71,6 +78,15 @@ def connect() -> Iterator[sqlite3.Connection]:
 def init() -> None:
     with connect() as conn:
         conn.executescript(SCHEMA)
+
+        for table, definition in MIGRATIONS:
+            column = definition.split()[0]
+            existing = {
+                row["name"]
+                for row in conn.execute(f"PRAGMA table_info({table})")
+            }
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
 
 
 # --- Utilisateurs ---------------------------------------------------------
@@ -223,6 +239,16 @@ def insert_agent(**fields) -> None:
         conn.execute(
             f"INSERT INTO agents ({columns}) VALUES ({holders})",
             tuple(fields.values()),
+        )
+
+
+def update_agent_workspace(
+    agent_id: str, *, needs_workspace: int, workspace: str | None
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE agents SET needs_workspace = ?, workspace = ? WHERE id = ?",
+            (needs_workspace, workspace, agent_id),
         )
 
 

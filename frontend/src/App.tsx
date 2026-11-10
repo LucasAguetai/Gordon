@@ -6,6 +6,7 @@ import {
   logout,
   type Agent,
   type Device,
+  type ToolMeta,
 } from "./api";
 import AgentForm from "./components/AgentForm";
 import AgentGrid from "./components/AgentGrid";
@@ -18,7 +19,7 @@ type Phase = "checking" | "locked" | "ready";
 export default function App() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [tools, setTools] = useState<Record<string, string>>({});
+  const [tools, setTools] = useState<Record<string, ToolMeta>>({});
   const [devices, setDevices] = useState<Device[]>([]);
   const [model, setModel] = useState("");
   const [active, setActive] = useState<Agent | null>(null);

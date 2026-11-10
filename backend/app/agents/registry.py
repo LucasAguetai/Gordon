@@ -12,20 +12,67 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .. import db
 
 # Outils exposables à un agent. La liste fait office de liste blanche :
 # tout ce qui n'y figure pas est refusé à la création.
-TOOL_CATALOG: dict[str, str] = {
-    "Read": "Lire des fichiers",
-    "Write": "Créer des fichiers",
-    "Edit": "Modifier des fichiers",
-    "Glob": "Chercher des fichiers par motif",
-    "Grep": "Chercher du texte dans les fichiers",
-    "Bash": "Exécuter des commandes shell",
-    "WebSearch": "Rechercher sur le web",
-    "WebFetch": "Lire une page web",
+#
+# `group` sépare ce qui touche au dossier de travail du reste, et `hint`
+# donne un exemple concret : « chercher par motif » ne dit rien tant qu'on
+# n'a pas vu à quoi ressemble un motif.
+TOOL_CATALOG: dict[str, dict] = {
+    "Read": {
+        "label": "Lire un fichier",
+        "hint": "Ouvrir un fichier du dossier et en lire le contenu.",
+        "group": "files",
+    },
+    "Glob": {
+        "label": "Trouver des fichiers",
+        "hint": (
+            "Lister des fichiers d'après leur nom. "
+            "Par exemple *.pdf, ou **/releve-*.csv pour fouiller les "
+            "sous-dossiers."
+        ),
+        "group": "files",
+    },
+    "Grep": {
+        "label": "Chercher dans les fichiers",
+        "hint": (
+            "Chercher une expression à l'intérieur des fichiers. "
+            "Par exemple toutes les lignes contenant « facture »."
+        ),
+        "group": "files",
+    },
+    "Write": {
+        "label": "Créer un fichier",
+        "hint": "Écrire un nouveau fichier dans le dossier.",
+        "group": "files",
+    },
+    "Edit": {
+        "label": "Modifier un fichier",
+        "hint": "Retoucher un fichier existant sans le réécrire entièrement.",
+        "group": "files",
+    },
+    "Bash": {
+        "label": "Commandes shell",
+        "hint": (
+            "Exécuter des commandes dans le dossier. Le plus puissant, "
+            "et le plus risqué : à ne donner qu'en connaissance de cause."
+        ),
+        "group": "files",
+    },
+    "WebSearch": {
+        "label": "Rechercher sur le web",
+        "hint": "Interroger un moteur de recherche et lire les résultats.",
+        "group": "web",
+    },
+    "WebFetch": {
+        "label": "Ouvrir une page web",
+        "hint": "Lire une page dont on connaît déjà l'adresse.",
+        "group": "web",
+    },
 }
 
 READ_ONLY = ["Read", "Glob", "Grep"]
@@ -34,9 +81,11 @@ FILES = ["Read", "Write", "Edit", "Glob", "Grep"]
 
 EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 
-# Les outils qui écrivent sur le disque ou lancent des commandes n'ont de
-# sens que si l'agent dispose du répertoire de travail partagé.
-WORKSPACE_TOOLS = {"Write", "Edit", "Bash"}
+# Tout outil du groupe « fichiers » s'exerce dans un dossier : sans dossier,
+# l'agent n'aurait rien à lire ni où écrire.
+WORKSPACE_TOOLS = {
+    name for name, meta in TOOL_CATALOG.items() if meta["group"] == "files"
+}
 
 
 @dataclass(frozen=True)
@@ -51,6 +100,7 @@ class AgentSpec:
     tools: list[str] = field(default_factory=list)
     effort: str | None = None
     needs_workspace: bool = False
+    workspace: str | None = None
     position: int = 0
 
     @property
@@ -68,6 +118,7 @@ class AgentSpec:
             "accent": self.accent,
             "tools": self.tools,
             "look": self.look,
+            "workspace": self.workspace,
         }
 
 
@@ -83,6 +134,7 @@ def _from_row(row: sqlite3.Row) -> AgentSpec:
         tools=json.loads(row["tools"]),
         effort=row["effort"],
         needs_workspace=bool(row["needs_workspace"]),
+        workspace=row["workspace"],
         position=row["position"],
     )
 
@@ -101,6 +153,32 @@ def listing() -> list[dict]:
 
 class AgentError(ValueError):
     """Données d'agent invalides, destinées à être montrées à l'utilisateur."""
+
+
+def resolve_workspace(raw: str) -> str:
+    """Valide un dossier de travail et renvoie son chemin canonique.
+
+    La résolution est faite avant la comparaison : sans ça, un `..` ou un
+    lien symbolique permettrait de désigner un dossier hors de la racine
+    autorisée tout en ayant l'air de rester dedans.
+    """
+    from ..config import settings
+
+    candidate = Path(raw.strip()).expanduser()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise AgentError(f"Dossier introuvable : {raw}") from exc
+
+    if not resolved.is_dir():
+        raise AgentError(f"Ce n'est pas un dossier : {resolved}")
+
+    root = settings.fs_root.resolve()
+    if resolved != root and root not in resolved.parents:
+        raise AgentError(
+            f"Le dossier doit se trouver dans {root}."
+        )
+    return str(resolved)
 
 
 def slugify(name: str) -> str:
@@ -127,6 +205,7 @@ def create(
     system_prompt: str,
     look: dict,
     effort: str | None = None,
+    workspace: str | None = None,
 ) -> AgentSpec:
     name = name.strip()
     role = role.strip()
@@ -150,6 +229,17 @@ def create(
     if not isinstance(look, dict):
         raise AgentError("Description d'avatar invalide.")
 
+    needs_workspace = bool(WORKSPACE_TOOLS & set(tools))
+    if needs_workspace:
+        if not workspace:
+            raise AgentError(
+                "Ces outils travaillent sur des fichiers : choisis un dossier."
+            )
+        workspace = resolve_workspace(workspace)
+    else:
+        # Un agent sans outil fichier n'a rien à faire d'un dossier.
+        workspace = None
+
     agent_id = unique_id(name)
     position = db.next_position()
 
@@ -163,7 +253,8 @@ def create(
         system_prompt=system_prompt,
         look=json.dumps(look),
         effort=effort,
-        needs_workspace=int(bool(WORKSPACE_TOOLS & set(tools))),
+        needs_workspace=int(needs_workspace),
+        workspace=workspace,
         position=position,
     )
     spec = get(agent_id)
@@ -356,11 +447,39 @@ commandes shell. Reste dans ce répertoire.
 ]
 
 
+def backfill_workspaces() -> None:
+    """Rattrape les agents créés avant le réglage du dossier par agent.
+
+    Deux choses à reprendre : `needs_workspace`, car la lecture seule
+    (Read, Glob, Grep) relève désormais du groupe « fichiers » alors
+    qu'elle n'en faisait pas partie, et le dossier lui-même, resté vide.
+    """
+    from ..config import settings
+
+    fallback = str(settings.workspace_dir)
+    for row in db.list_agents():
+        tools = set(json.loads(row["tools"]))
+        needs = bool(WORKSPACE_TOOLS & tools)
+        if needs == bool(row["needs_workspace"]) and (
+            row["workspace"] or not needs
+        ):
+            continue
+        db.update_agent_workspace(
+            row["id"],
+            needs_workspace=int(needs),
+            workspace=(row["workspace"] or fallback) if needs else None,
+        )
+
+
 def seed_if_empty() -> None:
     """Insère les spécialités d'origine au tout premier démarrage."""
+    from ..config import settings
+
     if db.agent_count() > 0:
         return
+
     for position, seed in enumerate(SEEDS, start=1):
+        needs_workspace = bool(WORKSPACE_TOOLS & set(seed["tools"]))
         db.insert_agent(
             id=seed["id"],
             name=seed["name"],
@@ -371,6 +490,9 @@ def seed_if_empty() -> None:
             system_prompt=seed["system_prompt"],
             look=json.dumps(seed["look"]),
             effort=seed["effort"],
-            needs_workspace=int(bool(WORKSPACE_TOOLS & set(seed["tools"]))),
+            needs_workspace=int(needs_workspace),
+            # Les agents d'amorçage démarrent sur le dossier partagé ; on
+            # peut leur en choisir un autre en les recréant.
+            workspace=str(settings.workspace_dir) if needs_workspace else None,
             position=position,
         )

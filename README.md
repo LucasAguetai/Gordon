@@ -105,18 +105,45 @@ la console, en étant déjà connecté. Ce chemin ne rouvre rien publiquement.
 ## Créer et supprimer des agents
 
 Depuis la console : **« Nouvel agent »** ouvre un formulaire (nom,
-spécialité, couleur, outils, profondeur de réflexion, prompt système), avec
-un aperçu du visage et un bouton pour en tirer un autre. Le **✕** au survol
-d'une carte la supprime, après confirmation.
+spécialité, couleur, outils, dossier de travail, profondeur de réflexion,
+prompt système), avec un aperçu du visage et un bouton pour en tirer un
+autre. Le **✕** au survol d'une carte la supprime, après confirmation.
+
+Le prompt système s'amorce depuis le nom et la spécialité — il ne reste
+qu'à décrire la méthode. Dès que tu y touches, il cesse de se réécrire.
 
 Supprimer un agent **efface aussi le fil de conversation** qui lui est
 rattaché. C'est volontaire : sans ça, recréer un agent sous le même nom
 reprendrait la conversation du précédent.
 
-Les outils disponibles : `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`,
-`WebSearch`, `WebFetch`. **Ne donne que le strict nécessaire** — la liste est
-une liste blanche appliquée côté serveur, un agent ne peut pas en sortir, et
-tout outil inconnu est refusé à la création.
+### Les outils
+
+Deux familles, et la différence compte.
+
+| Famille | Outils | Portée |
+|---|---|---|
+| **Fichiers** | `Read`, `Glob`, `Grep`, `Write`, `Edit`, `Bash` | Un dossier, choisi à la création |
+| **Web** | `WebSearch`, `WebFetch` | Internet |
+
+Dès qu'un outil fichier est coché, le formulaire réclame un **dossier de
+travail** et l'agent ne verra que celui-ci. Le sélecteur est servi par le
+backend : un sélecteur de fichiers natif ne donne jamais le vrai chemin
+disque au navigateur.
+
+`Glob` et `Grep` se confondent facilement : `Glob` cherche des fichiers
+**par leur nom** (`*.pdf`, `**/releve-*.csv`), `Grep` cherche une expression
+**à l'intérieur** des fichiers.
+
+**Ne donne que le strict nécessaire** : la liste est une liste blanche
+appliquée côté serveur, un agent ne peut pas en sortir, et tout outil
+inconnu est refusé à la création. `Bash` est le plus puissant et le plus
+risqué — il exécute des commandes dans le dossier.
+
+> Un agent ne peut recevoir qu'un dossier situé dans ton dossier personnel.
+> Le chemin est résolu **avant** d'être comparé à cette racine, pour qu'un
+> `..` ou un lien symbolique ne permette pas d'en sortir. Pour élargir ou
+> resserrer, c'est `fs_root` dans
+> [`config.py`](backend/app/config.py).
 
 Les agents vivent en base
 ([`backend/app/db.py`](backend/app/db.py)) ; les valeurs d'amorçage du

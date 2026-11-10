@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { createAgent, type Agent } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { createAgent, type Agent, type ToolMeta } from "../api";
 import { randomLook, type Look } from "../avatar";
+import FolderPicker from "./FolderPicker";
 import PortraitReel from "./PortraitReel";
 
 type Props = {
-  tools: Record<string, string>;
+  tools: Record<string, ToolMeta>;
   onCreated: (agent: Agent) => void;
   onCancel: () => void;
 };
@@ -21,13 +22,19 @@ const EFFORTS = [
   ["xhigh", "Très approfondi"],
 ] as const;
 
-const PLACEHOLDER = `Tu es <nom>, spécialiste de <domaine>.
+/** Amorce du prompt, construite à partir des premiers champs : il ne reste
+ *  qu'à décrire la méthode. */
+function template(name: string, role: string): string {
+  const who = name.trim() || "…";
+  const domain = role.trim().toLowerCase() || "…";
+  return `Tu es ${who}, spécialiste de ${domain}.
 
 Tu réponds en français. Va droit au but : pas de préambule.
 Quand tu n'es pas sûr d'un fait, dis-le plutôt que de deviner.
 
 Méthode :
-- ...`;
+- `;
+}
 
 export default function AgentForm({ tools, onCreated, onCancel }: Props) {
   const [name, setName] = useState("");
@@ -35,11 +42,30 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
   const [tagline, setTagline] = useState("");
   const [accent, setAccent] = useState(ACCENTS[4]);
   const [picked, setPicked] = useState<string[]>([]);
+  const [workspace, setWorkspace] = useState<string | null>(null);
   const [effort, setEffort] = useState<string>("high");
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(() => template("", ""));
+  const [promptTouched, setPromptTouched] = useState(false);
   const [look, setLook] = useState<Look>(() => randomLook());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Tant que l'utilisateur n'a pas écrit dans le prompt, l'amorce suit les
+  // champs du dessus. Dès qu'il y touche, on cesse de l'écraser.
+  useEffect(() => {
+    if (!promptTouched) setPrompt(template(name, role));
+  }, [name, role, promptTouched]);
+
+  const groups = useMemo(() => {
+    const files: [string, ToolMeta][] = [];
+    const web: [string, ToolMeta][] = [];
+    for (const entry of Object.entries(tools)) {
+      (entry[1].group === "files" ? files : web).push(entry);
+    }
+    return { files, web };
+  }, [tools]);
+
+  const needsFolder = picked.some((t) => tools[t]?.group === "files");
 
   function toggleTool(tool: string) {
     setPicked((current) =>
@@ -62,6 +88,7 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
         system_prompt: prompt,
         look,
         effort,
+        workspace: needsFolder ? workspace : null,
       });
       onCreated(agent);
     } catch (e) {
@@ -70,7 +97,24 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
     }
   }
 
-  const ready = name.trim() && role.trim() && prompt.trim();
+  const ready =
+    name.trim() && role.trim() && prompt.trim() && (!needsFolder || workspace);
+
+  function toolBox(tool: string, meta: ToolMeta) {
+    return (
+      <label key={tool} className="check">
+        <input
+          type="checkbox"
+          checked={picked.includes(tool)}
+          onChange={() => toggleTool(tool)}
+        />
+        <span>
+          <code>{tool}</code> {meta.label}
+          <small>{meta.hint}</small>
+        </span>
+      </label>
+    );
+  }
 
   return (
     <div className="sheet-backdrop" onClick={onCancel}>
@@ -151,24 +195,33 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
 
             <div className="wide">
               <span className="field-label">
-                Outils
+                Fichiers
                 <small>
-                  Ne donne que le nécessaire : la liste est appliquée côté
-                  serveur, l'agent ne peut pas en sortir.
+                  Ces outils s'exercent dans un dossier, et nulle part
+                  ailleurs.
                 </small>
               </span>
               <div className="checks">
-                {Object.entries(tools).map(([tool, label]) => (
-                  <label key={tool} className="check">
-                    <input
-                      type="checkbox"
-                      checked={picked.includes(tool)}
-                      onChange={() => toggleTool(tool)}
-                    />
-                    <code>{tool}</code>
-                    <small>{label}</small>
-                  </label>
-                ))}
+                {groups.files.map(([tool, meta]) => toolBox(tool, meta))}
+              </div>
+            </div>
+
+            {needsFolder && (
+              <div className="wide">
+                <span className="field-label">
+                  Dossier de travail
+                  <small>
+                    L'agent ne verra que ce dossier et son contenu.
+                  </small>
+                </span>
+                <FolderPicker value={workspace} onChange={setWorkspace} />
+              </div>
+            )}
+
+            <div className="wide">
+              <span className="field-label">Web</span>
+              <div className="checks">
+                {groups.web.map(([tool, meta]) => toolBox(tool, meta))}
               </div>
             </div>
 
@@ -190,13 +243,18 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
             <label className="wide">
               <span className="field-label">
                 Prompt système
-                <small>Définit le métier de l'agent et sa méthode.</small>
+                <small>
+                  Le début se remplit depuis le nom et la spécialité — il
+                  reste à décrire la méthode.
+                </small>
               </span>
               <textarea
                 value={prompt}
-                rows={9}
-                placeholder={PLACEHOLDER}
-                onChange={(e) => setPrompt(e.target.value)}
+                rows={10}
+                onChange={(e) => {
+                  setPromptTouched(true);
+                  setPrompt(e.target.value);
+                }}
               />
             </label>
           </div>
@@ -212,6 +270,11 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
           >
             {busy ? "Création…" : "Créer l'agent"}
           </button>
+          {needsFolder && !workspace && (
+            <p className="foot-note">
+              Choisis un dossier : les outils fichiers en ont besoin.
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -15,6 +15,21 @@ export type Agent = {
   accent: string;
   tools: string[];
   look: Partial<Look>;
+  workspace: string | null;
+};
+
+export type ToolMeta = {
+  label: string;
+  hint: string;
+  /** « files » exige un dossier de travail ; « web » non. */
+  group: "files" | "web";
+};
+
+export type FolderListing = {
+  path: string;
+  parent: string | null;
+  root: string;
+  folders: { name: string; path: string }[];
 };
 
 /** Ce que l'écran verrouillé connaît de l'équipe : l'apparence, rien de plus. */
@@ -36,6 +51,7 @@ export type NewAgent = {
   system_prompt: string;
   look: Look;
   effort: string | null;
+  workspace: string | null;
 };
 
 export type Device = {
@@ -119,7 +135,12 @@ export const removeDevice = (id: string) =>
 // --- Agents --------------------------------------------------------------
 
 export const getAgents = () =>
-  request<{ agents: Agent[]; tools: Record<string, string> }>("/api/agents");
+  request<{ agents: Agent[]; tools: Record<string, ToolMeta> }>("/api/agents");
+
+export const browseFolders = (path?: string) =>
+  request<FolderListing>(
+    `/api/folders${path ? `?path=${encodeURIComponent(path)}` : ""}`,
+  );
 
 export const createAgent = (agent: NewAgent) =>
   request<{ agent: Agent }>("/api/agents", {

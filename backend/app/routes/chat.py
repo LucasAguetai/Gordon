@@ -25,6 +25,7 @@ class NewAgent(BaseModel):
     system_prompt: str = Field(min_length=1, max_length=20_000)
     look: dict = Field(default_factory=dict)
     effort: str | None = None
+    workspace: str | None = Field(default=None, max_length=1024)
 
 
 @router.get("/agents")
@@ -44,6 +45,7 @@ def create_agent(body: NewAgent, user_id: str = Depends(current_user)) -> dict:
             system_prompt=body.system_prompt,
             look=body.look,
             effort=body.effort,
+            workspace=body.workspace,
         )
     except registry.AgentError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc

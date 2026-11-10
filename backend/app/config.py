@@ -53,8 +53,14 @@ class Settings(BaseSettings):
     # ou un identifiant complet.
     model: str = "opus"
 
-    # Répertoire de travail accordé aux agents qui manipulent des fichiers.
+    # Répertoire proposé par défaut aux agents qui manipulent des fichiers.
     workspace_dir: Path = DATA_DIR / "workspace"
+
+    # Racine au-delà de laquelle un agent ne peut pas se voir attribuer de
+    # dossier, et que l'explorateur de la console refuse de quitter. Le
+    # dossier personnel par défaut : assez large pour être utile, assez
+    # étroit pour qu'un agent ne parte pas dans /etc ou /System.
+    fs_root: Path = Path.home()
 
     # Chemin du binaire `claude` si absent du PATH.
     cli_path: str | None = None

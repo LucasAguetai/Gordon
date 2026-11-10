@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db
 from .agents import registry
 from .config import settings
-from .routes import auth, chat
+from .routes import auth, chat, folders
 
 
 def locate_cli() -> Path | None:
@@ -50,6 +50,7 @@ def locate_cli() -> Path | None:
 async def lifespan(app: FastAPI):
     db.init()
     registry.seed_if_empty()
+    registry.backfill_workspaces()
 
     if locate_cli() is None:
         print(
@@ -82,6 +83,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(folders.router)
 
 
 @app.get("/api/health")
