@@ -5,11 +5,18 @@ import PortraitReel from "./PortraitReel";
 type Props = {
   agents: Agent[];
   onSelect: (agent: Agent) => void;
+  onEdit: (agent: Agent) => void;
   onDelete: (agent: Agent) => Promise<void>;
   onNew: () => void;
 };
 
-export default function AgentGrid({ agents, onSelect, onDelete, onNew }: Props) {
+export default function AgentGrid({
+  agents,
+  onSelect,
+  onEdit,
+  onDelete,
+  onNew,
+}: Props) {
   // Agent dont la suppression attend confirmation.
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -96,14 +103,24 @@ export default function AgentGrid({ agents, onSelect, onDelete, onNew }: Props) 
                 </div>
               </div>
             ) : (
-              <button
-                className="frame-del"
-                title={`Supprimer ${agent.name}`}
-                aria-label={`Supprimer ${agent.name}`}
-                onClick={() => setConfirming(agent.id)}
-              >
-                ✕
-              </button>
+              <div className="frame-actions">
+                <button
+                  className="frame-act"
+                  title={`Modifier ${agent.name}`}
+                  aria-label={`Modifier ${agent.name}`}
+                  onClick={() => onEdit(agent)}
+                >
+                  ✎
+                </button>
+                <button
+                  className="frame-act danger"
+                  title={`Supprimer ${agent.name}`}
+                  aria-label={`Supprimer ${agent.name}`}
+                  onClick={() => setConfirming(agent.id)}
+                >
+                  ✕
+                </button>
+              </div>
             )}
           </article>
         ))}

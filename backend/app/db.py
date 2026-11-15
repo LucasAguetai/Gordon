@@ -1,10 +1,13 @@
 """Stockage SQLite.
 
-Trois choses à persister :
+Quatre choses à persister :
   - les passkeys enregistrées (credentials WebAuthn)
   - l'utilisateur unique propriétaire de l'instance
   - l'identifiant de session Claude par (utilisateur, agent), pour que chaque
     agent retrouve le fil de la conversation après un redémarrage
+  - la transcription des conversations, pour que l'historique s'affiche en
+    rouvrant un agent (la session Claude porte la mémoire du modèle, mais ne
+    permet pas de réafficher les échanges)
 """
 
 from __future__ import annotations
@@ -39,6 +42,20 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, agent_id)
 );
+
+CREATE TABLE IF NOT EXISTS messages (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    TEXT NOT NULL,
+    agent_id   TEXT NOT NULL,
+    who        TEXT NOT NULL,   -- 'user' | 'agent' | 'error'
+    text       TEXT NOT NULL,
+    tools      TEXT,            -- tableau JSON des outils utilisés pendant le tour
+    meta       TEXT,            -- objet JSON : durée, tokens…
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_thread
+    ON messages (user_id, agent_id, id);
 
 CREATE TABLE IF NOT EXISTS agents (
     id              TEXT PRIMARY KEY,
@@ -202,6 +219,42 @@ def clear_agent_session(user_id: str, agent_id: str) -> None:
         )
 
 
+# --- Transcriptions -------------------------------------------------------
+
+
+def append_message(
+    user_id: str,
+    agent_id: str,
+    who: str,
+    text: str,
+    tools: str | None = None,
+    meta: str | None = None,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO messages (user_id, agent_id, who, text, tools, meta)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (user_id, agent_id, who, text, tools, meta),
+        )
+
+
+def list_messages(user_id: str, agent_id: str) -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            """SELECT id, who, text, tools, meta, created_at FROM messages
+               WHERE user_id = ? AND agent_id = ? ORDER BY id""",
+            (user_id, agent_id),
+        ).fetchall()
+
+
+def clear_messages(user_id: str, agent_id: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM messages WHERE user_id = ? AND agent_id = ?",
+            (user_id, agent_id),
+        )
+
+
 # --- Agents ---------------------------------------------------------------
 
 
@@ -252,13 +305,23 @@ def update_agent_workspace(
         )
 
 
-def delete_agent(agent_id: str) -> bool:
-    """Supprime un agent et le fil de conversation qui lui est rattaché.
+def update_agent(agent_id: str, **fields) -> None:
+    assigns = ", ".join(f"{name} = ?" for name in fields)
+    with connect() as conn:
+        conn.execute(
+            f"UPDATE agents SET {assigns} WHERE id = ?",
+            (*fields.values(), agent_id),
+        )
 
-    Sans le second DELETE, recréer un agent sous le même identifiant
-    reprendrait la conversation du précédent.
+
+def delete_agent(agent_id: str) -> bool:
+    """Supprime un agent, son fil de conversation et sa transcription.
+
+    Sans ces purges, recréer un agent sous le même identifiant reprendrait
+    la conversation du précédent.
     """
     with connect() as conn:
         cur = conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
         conn.execute("DELETE FROM agent_sessions WHERE agent_id = ?", (agent_id,))
+        conn.execute("DELETE FROM messages WHERE agent_id = ?", (agent_id,))
         return cur.rowcount > 0

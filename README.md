@@ -1,11 +1,16 @@
 # Gordon
 
 Console d'agents IA spécialisés, auto-hébergée. Chaque agent a son métier, son
-prompt et son jeu d'outils restreint. Accès verrouillé par passkey.
+prompt, son jeu d'outils restreint et **sa mémoire** : la conversation reprend
+où elle s'était arrêtée, visite après visite. Accès verrouillé par passkey.
 
 Moteur : **Claude Agent SDK** — le SDK s'appuie sur le CLI `claude`, qui porte
 l'authentification de ton abonnement Claude. **Aucune clé API, aucun coût à
 l'appel.**
+
+Sur macOS, les agents peuvent aussi recevoir des outils **Agenda, Rappels et
+Mail**, branchés sur les applications du Mac — en local, rien ne sort de la
+machine.
 
 ---
 
@@ -102,28 +107,48 @@ la console, en étant déjà connecté. Ce chemin ne rouvre rien publiquement.
 
 ---
 
-## Créer et supprimer des agents
+## Les conversations
+
+Chaque agent garde **un fil continu**, et c'est le cœur du projet : plus tu
+lui parles, plus il connaît ton contexte.
+
+- **La transcription est persistée** : rouvre un agent, l'historique
+  s'affiche. La mémoire du modèle, elle, voyage via l'identifiant de session
+  du SDK — les deux survivent à un redémarrage du serveur.
+- **Un tour survit à la fermeture de la page.** La réponse se calcule côté
+  serveur : verrouille ton téléphone, ferme l'onglet — en revenant,
+  l'interface voit qu'un tour est en cours, patiente, puis affiche la
+  réponse enregistrée. Un agent ne traite qu'un message à la fois.
+- **« Nouveau fil »** efface tout — transcription et mémoire — après
+  confirmation.
+- Les réponses sont rendues en **markdown** : tableaux, listes, code.
+
+## Créer, modifier et supprimer des agents
 
 Depuis la console : **« Nouvel agent »** ouvre un formulaire (nom,
 spécialité, couleur, outils, dossier de travail, profondeur de réflexion,
 prompt système), avec un aperçu du visage et un bouton pour en tirer un
-autre. Le **✕** au survol d'une carte la supprime, après confirmation.
+autre. Au survol d'une carte : **✎** modifie, **✕** supprime (après
+confirmation).
 
 Le prompt système s'amorce depuis le nom et la spécialité — il ne reste
 qu'à décrire la méthode. Dès que tu y touches, il cesse de se réécrire.
 
-Supprimer un agent **efface aussi le fil de conversation** qui lui est
-rattaché. C'est volontaire : sans ça, recréer un agent sous le même nom
-reprendrait la conversation du précédent.
+Modifier un agent **ne touche pas à sa mémoire** : l'identifiant interne ne
+change jamais, même si tu renommes l'agent — la conversation continue avec
+la fiche à jour. Supprimer un agent, en revanche, **efface aussi son fil**.
+C'est volontaire : sans ça, recréer un agent sous le même nom reprendrait
+la conversation du précédent.
 
 ### Les outils
 
-Deux familles, et la différence compte.
+Trois familles, et la différence compte.
 
 | Famille | Outils | Portée |
 |---|---|---|
 | **Fichiers** | `Read`, `Glob`, `Grep`, `Write`, `Edit`, `Bash` | Un dossier, choisi à la création |
 | **Web** | `WebSearch`, `WebFetch` | Internet |
+| **Apple** (macOS) | `Agenda`, `AgendaAjout`, `Rappels`, `RappelAjout`, `Mail`, `MailBrouillon` | Les applications du Mac qui héberge Gordon |
 
 Dès qu'un outil fichier est coché, le formulaire réclame un **dossier de
 travail** et l'agent ne verra que celui-ci. Le sélecteur est servi par le
@@ -144,6 +169,31 @@ risqué — il exécute des commandes dans le dossier.
 > `..` ou un lien symbolique ne permette pas d'en sortir. Pour élargir ou
 > resserrer, c'est `fs_root` dans
 > [`config.py`](backend/app/config.py).
+
+### Les outils Apple
+
+Implémentés dans [`apple.py`](backend/app/agents/apple.py) et servis au
+moteur par un petit serveur MCP embarqué dans le backend. Agenda et Rappels
+passent par **EventKit** (pyobjc), Mail par un script **JXA** via
+`osascript` — tout est local, aucun service tiers.
+
+Lecture et écriture sont des cases **séparées** : tu peux donner l'agenda en
+lecture seule. Et chaque écriture est étroite par construction :
+
+- `AgendaAjout` / `RappelAjout` **créent** ; impossible de modifier ou de
+  supprimer quoi que ce soit d'existant.
+- `MailBrouillon` prépare un brouillon **ouvert dans Mail** — l'agent ne
+  peut rien envoyer, l'envoi reste un geste humain.
+
+À la première utilisation, macOS demande l'autorisation **sur le Mac qui
+héberge Gordon** (Calendriers, Rappels, ou Automatisation → Mail), pour
+l'application qui a lancé le serveur — ton terminal, en pratique. Si
+personne n'est devant l'écran, l'agent reçoit un message qui explique quoi
+autoriser et où.
+
+C'est aussi ce qui ancre l'étape 2 : ces données vivent sur ton Mac, donc
+**c'est ton Mac qui doit héberger Gordon** pour que ces outils existent.
+`GORDON_APPLE_TOOLS=false` les retire du catalogue.
 
 Les agents vivent en base
 ([`backend/app/db.py`](backend/app/db.py)) ; les valeurs d'amorçage du
@@ -175,39 +225,54 @@ backend/
   app/
     main.py              FastAPI, CORS, détection du CLI
     config.py            configuration par variables d'environnement
-    db.py                SQLite — passkeys, agents, fils de conversation
+    db.py                SQLite — passkeys, agents, sessions, transcriptions
     agents/
       registry.py        CRUD des agents + valeurs d'amorçage
-      runner.py          pont vers le Claude Agent SDK, streaming SSE
+      runner.py          pont vers le Claude Agent SDK, tours en tâche de
+                         fond, streaming SSE, transcription
+      apple.py           outils Agenda / Rappels / Mail (serveur MCP embarqué)
     auth/
       passkey.py         WebAuthn (enregistrement, vérification)
       session.py         cookie signé + protection des routes
-    routes/              auth.py, chat.py
+    routes/              auth.py, chat.py, folders.py
 frontend/
   src/
     api.ts               client HTTP + découpage du flux SSE
     avatar.ts            construction des portraits et du baudrier
     components/          LoginGate, AgentGrid, AgentForm, ChatView,
-                         PortraitReel, DevicePanel
+                         PortraitReel, FolderPicker, DevicePanel
 ```
 
 Quelques choix à connaître :
 
 - **Les conversations survivent au redémarrage.** Plutôt que de garder un
   sous-processus vivant par agent, on stocke l'identifiant de session renvoyé
-  par le SDK et on reprend le fil avec `resume=`.
+  par le SDK et on reprend le fil avec `resume=`. La transcription, elle, vit
+  dans SQLite — c'est elle que l'interface affiche.
+- **Un tour ne dépend pas de la connexion du navigateur.** Le tour s'exécute
+  dans une tâche asyncio ; la réponse HTTP ne fait que relayer une file
+  d'évènements. Client parti, le tour finit quand même et s'enregistre.
 - **Les agents sont isolés de ta machine.** `setting_sources=[]` empêche le SDK
   de charger tes `CLAUDE.md`, réglages et skills locaux : un agent de Gordon
   n'hérite pas de ton contexte de développement.
 - **Double barrière sur les outils.** La liste de la fiche d'agent est passée
-  au SDK *et* revérifiée à chaque appel côté serveur, avec un refus franc
-  plutôt qu'une attente de validation humaine qui n'arriverait jamais.
+  au SDK *et* revérifiée à chaque appel côté serveur — outils Apple compris,
+  sous leur nom complet `mcp__apple__…` — avec un refus franc plutôt qu'une
+  attente de validation humaine qui n'arriverait jamais.
 
 ---
 
 ## Étape 2 — mise en ligne sur gordon.aguetai.fr
 
-Trois choses à régler, par ordre de difficulté.
+D'abord une décision devenue simple : **c'est ton Mac qui héberge.** Les
+outils Apple lisent l'agenda, les rappels et le courrier *de la machine qui
+fait tourner Gordon* — sur un VPS, ils n'auraient rien à lire. Le chemin
+naturel est donc un tunnel depuis le Mac (Cloudflare Tunnel, par exemple) :
+pas de port ouvert sur ta box, TLS géré, et `gordon.aguetai.fr` pointe vers
+la maison. Garde le Mac branché et interdis sa mise en veille
+(`caffeinate` ou Réglages → Économie d'énergie).
+
+Ensuite, trois choses à régler, par ordre de difficulté.
 
 ### 1. Configuration (facile)
 
@@ -265,6 +330,9 @@ les agents, ni l'auth, ni l'interface.
 | Symptôme | Cause |
 |---|---|
 | `Failed to authenticate` dans le chat | Le CLI n'a pas de session valide → `claude auth login` |
+| « travaille déjà sur un message » | Un tour est en cours pour cet agent — un seul à la fois |
+| « macOS refuse l'accès aux Calendriers/Rappels » | Autorisation à donner sur le Mac : Réglages Système → Confidentialité et sécurité |
+| « macOS a bloqué le contrôle de Mail » | Même endroit, section Automatisation → autoriser Mail pour le terminal |
 | L'écran de connexion boucle | Le backend ne tourne pas, ou tu es sur :8787 au lieu de :5173 |
 | `NotAllowedError` à la création de passkey | Fenêtre système annulée, ou page servie hors `localhost`/HTTPS |
 | Réponse qui arrive d'un bloc | Mise en tampon du proxy sur `/api` |

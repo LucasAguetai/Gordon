@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { createAgent, type Agent, type ToolMeta } from "../api";
-import { randomLook, type Look } from "../avatar";
+import { createAgent, updateAgent, type Agent, type ToolMeta } from "../api";
+import { normalise, randomLook, type Look } from "../avatar";
 import FolderPicker from "./FolderPicker";
 import PortraitReel from "./PortraitReel";
 
 type Props = {
   tools: Record<string, ToolMeta>;
-  onCreated: (agent: Agent) => void;
+  /** Fiche à modifier ; absente, le formulaire crée un nouvel agent. */
+  initial?: Agent;
+  onSaved: (agent: Agent) => void;
   onCancel: () => void;
 };
 
@@ -36,17 +38,26 @@ Méthode :
 - `;
 }
 
-export default function AgentForm({ tools, onCreated, onCancel }: Props) {
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [tagline, setTagline] = useState("");
-  const [accent, setAccent] = useState(ACCENTS[4]);
-  const [picked, setPicked] = useState<string[]>([]);
-  const [workspace, setWorkspace] = useState<string | null>(null);
-  const [effort, setEffort] = useState<string>("high");
-  const [prompt, setPrompt] = useState(() => template("", ""));
-  const [promptTouched, setPromptTouched] = useState(false);
-  const [look, setLook] = useState<Look>(() => randomLook());
+export default function AgentForm({ tools, initial, onSaved, onCancel }: Props) {
+  const editing = initial !== undefined;
+
+  const [name, setName] = useState(initial?.name ?? "");
+  const [role, setRole] = useState(initial?.role ?? "");
+  const [tagline, setTagline] = useState(initial?.tagline ?? "");
+  const [accent, setAccent] = useState(initial?.accent ?? ACCENTS[4]);
+  const [picked, setPicked] = useState<string[]>(initial?.tools ?? []);
+  const [workspace, setWorkspace] = useState<string | null>(
+    initial?.workspace ?? null,
+  );
+  const [effort, setEffort] = useState<string>(initial?.effort ?? "high");
+  const [prompt, setPrompt] = useState(() =>
+    editing ? initial.system_prompt : template("", ""),
+  );
+  // En édition, le prompt existe déjà : l'amorce ne doit jamais l'écraser.
+  const [promptTouched, setPromptTouched] = useState(editing);
+  const [look, setLook] = useState<Look>(() =>
+    editing ? normalise(initial.look) : randomLook(),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,10 +70,13 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
   const groups = useMemo(() => {
     const files: [string, ToolMeta][] = [];
     const web: [string, ToolMeta][] = [];
+    const apple: [string, ToolMeta][] = [];
     for (const entry of Object.entries(tools)) {
-      (entry[1].group === "files" ? files : web).push(entry);
+      if (entry[1].group === "files") files.push(entry);
+      else if (entry[1].group === "apple") apple.push(entry);
+      else web.push(entry);
     }
-    return { files, web };
+    return { files, web, apple };
   }, [tools]);
 
   const needsFolder = picked.some((t) => tools[t]?.group === "files");
@@ -78,19 +92,22 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
   async function submit() {
     setBusy(true);
     setError(null);
+    const body = {
+      name,
+      role,
+      tagline,
+      accent,
+      tools: picked,
+      system_prompt: prompt,
+      look,
+      effort,
+      workspace: needsFolder ? workspace : null,
+    };
     try {
-      const { agent } = await createAgent({
-        name,
-        role,
-        tagline,
-        accent,
-        tools: picked,
-        system_prompt: prompt,
-        look,
-        effort,
-        workspace: needsFolder ? workspace : null,
-      });
-      onCreated(agent);
+      const { agent } = editing
+        ? await updateAgent(initial.id, body)
+        : await createAgent(body);
+      onSaved(agent);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -124,7 +141,7 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sheet-head">
-          <h2>Nouvel agent</h2>
+          <h2>{editing ? `Modifier ${initial.name}` : "Nouvel agent"}</h2>
           <button className="ghost-btn" onClick={onCancel}>
             Annuler
           </button>
@@ -225,6 +242,22 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
               </div>
             </div>
 
+            {groups.apple.length > 0 && (
+              <div className="wide">
+                <span className="field-label">
+                  Apple
+                  <small>
+                    Agenda, Rappels et Mail du Mac qui héberge Gordon. À la
+                    première utilisation, macOS demande l'autorisation sur ce
+                    Mac.
+                  </small>
+                </span>
+                <div className="checks">
+                  {groups.apple.map(([tool, meta]) => toolBox(tool, meta))}
+                </div>
+              </div>
+            )}
+
             <div className="wide">
               <span className="field-label">Profondeur de réflexion</span>
               <div className="segmented">
@@ -244,8 +277,9 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
               <span className="field-label">
                 Prompt système
                 <small>
-                  Le début se remplit depuis le nom et la spécialité — il
-                  reste à décrire la méthode.
+                  {editing
+                    ? "Modifie librement : la conversation en cours est conservée."
+                    : "Le début se remplit depuis le nom et la spécialité — il reste à décrire la méthode."}
                 </small>
               </span>
               <textarea
@@ -268,7 +302,13 @@ export default function AgentForm({ tools, onCreated, onCancel }: Props) {
             disabled={!ready || busy}
             onClick={() => void submit()}
           >
-            {busy ? "Création…" : "Créer l'agent"}
+            {busy
+              ? editing
+                ? "Enregistrement…"
+                : "Création…"
+              : editing
+                ? "Enregistrer"
+                : "Créer l'agent"}
           </button>
           {needsFolder && !workspace && (
             <p className="foot-note">

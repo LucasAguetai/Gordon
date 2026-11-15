@@ -7,6 +7,7 @@ placé dans backend/. Voir .env.example.
 from __future__ import annotations
 
 import secrets
+import sys
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -64,6 +65,12 @@ class Settings(BaseSettings):
 
     # Chemin du binaire `claude` si absent du PATH.
     cli_path: str | None = None
+
+    # --- Outils Apple ---
+    # Agenda, Rappels et Mail passent par les applications du Mac : ils
+    # n'existent que sur macOS, et seulement sur la machine où vivent ces
+    # données. GORDON_APPLE_TOOLS=false pour les retirer du catalogue.
+    apple_tools: bool = sys.platform == "darwin"
 
     @property
     def db_path(self) -> Path:

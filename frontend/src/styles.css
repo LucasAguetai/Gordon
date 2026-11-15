@@ -520,11 +520,18 @@ button {
   outline-offset: -3px;
 }
 
-.frame-del {
+/* Actions au survol : modifier et supprimer. Au-dessus de la zone
+   cliquable, pour rester distinctes de l'ouverture. */
+.frame-actions {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+
+.frame-act {
   width: 22px;
   height: 22px;
   display: grid;
@@ -539,12 +546,18 @@ button {
   transition: opacity 0.16s, color 0.16s, border-color 0.16s;
 }
 
-.frame:hover .frame-del,
-.frame-del:focus-visible {
+.frame:hover .frame-act,
+.frame-act:focus-visible {
   opacity: 1;
 }
 
-.frame-del:hover {
+.frame-act:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.frame-act.danger:hover {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 45%, transparent);
   background: rgba(248, 113, 107, 0.12);
@@ -1035,6 +1048,122 @@ button {
   color: #ffb9b5;
 }
 
+/* ----- Markdown dans les réponses d'agent -----
+   La bulle garde pre-wrap pour le texte brut (tours utilisateur, erreurs) ;
+   le conteneur .md repasse en flux normal, sans quoi chaque saut de ligne
+   du source markdown doublerait l'interligne. */
+.bubble .md {
+  white-space: normal;
+}
+
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+
+.md p,
+.md ul,
+.md ol,
+.md table,
+.md blockquote,
+.md pre {
+  margin: 0 0 0.75em;
+}
+
+.md ul,
+.md ol {
+  padding-left: 1.35em;
+}
+
+.md li {
+  margin-bottom: 0.25em;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-size: 1em;
+  font-weight: 650;
+  margin: 1em 0 0.45em;
+  color: var(--text);
+}
+
+.md h1 { font-size: 1.12em; }
+.md h2 { font-size: 1.06em; }
+
+.md code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.md pre {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+
+.md pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.md table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+  font-size: 13px;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--line-bright);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.md th {
+  background: rgba(255, 255, 255, 0.045);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.md blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  color: var(--muted);
+}
+
+.md a {
+  color: var(--accent);
+}
+
+.md hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1em 0;
+}
+
+/* Confirmation du « Nouveau fil » : l'historique est une mémoire, on ne
+   l'efface pas sur un clic malheureux. */
+.reset-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
 /* Bandeau d'activité : réflexion et usage d'outils. */
 .activity {
   display: flex;
@@ -1192,11 +1321,40 @@ button {
   color: var(--muted-dim);
 }
 
+/* ===================== Petits écrans ===================== */
+
+/* Sans survol (tactile), les actions des cartes doivent être visibles
+   d'emblée : rien ne les révélerait autrement. */
+@media (hover: none) {
+  .frame-act { opacity: 1; }
+}
+
 @media (max-width: 620px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .frame { min-height: 0; padding: 16px 14px 14px; }
+  .frame-portrait { width: 72px; height: 72px; }
+  .frame-name { font-size: 18px; }
   .gate-title { font-size: 23px; letter-spacing: 0.2em; }
-  .content { padding: 24px 16px 44px; }
-  .chat { height: calc(100vh - 104px); }
+  .topbar { padding: 12px 14px; gap: 10px; }
+  .content { padding: 20px 14px 40px; }
+
+  /* dvh : la barre d'adresse mobile se replie sans masquer le composer. */
+  .chat { height: calc(100vh - 96px); height: calc(100dvh - 96px); }
+  .chat-head { flex-wrap: wrap; gap: 10px; row-gap: 12px; }
+  .turn { max-width: 100%; }
+  .log { padding: 16px 0; gap: 16px; }
+  .composer textarea { min-height: 46px; padding: 12px 13px; font-size: 16px; }
+  .send-btn { height: 46px; padding: 0 16px; }
+
+  .sheet-backdrop { padding: 0; }
+  .sheet { max-width: none; min-height: 100%; border-radius: 0; border-left: none; border-right: none; }
+  .sheet-body { padding: 16px; gap: 16px; }
+  .sheet-portrait { flex-direction: row; }
+  .devices { padding: 16px; }
+}
+
+@media (max-width: 400px) {
+  .grid { grid-template-columns: 1fr; }
 }
 
 /* Respecte le réglage système de réduction des animations. */

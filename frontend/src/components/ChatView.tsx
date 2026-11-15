@@ -1,11 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import { resetAgent, sendMessage, type Agent } from "../api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  getHistory,
+  resetAgent,
+  sendMessage,
+  type Agent,
+  type HistoryTurn,
+} from "../api";
 import PortraitReel from "./PortraitReel";
 
 type Turn = {
-  id: number;
+  id: string;
   who: "user" | "agent" | "error";
   text: string;
+  tools: string[];
   meta?: string;
 };
 
@@ -14,36 +23,129 @@ type Props = {
   onBack: () => void;
 };
 
+/** Ligne de détail sous une réponse : durée, volume, interruption. */
+function metaLine(meta: HistoryTurn["meta"]): string | undefined {
+  if (!meta) return undefined;
+  const bits: string[] = [];
+  if (meta.duration_ms) bits.push(`${(meta.duration_ms / 1000).toFixed(1)} s`);
+  if (meta.output_tokens) bits.push(`${meta.output_tokens} tokens`);
+  if (meta.interrupted) bits.push("interrompu");
+  return bits.length ? bits.join(" · ") : undefined;
+}
+
+function fromHistory(turn: HistoryTurn): Turn {
+  return {
+    id: `h${turn.id}`,
+    who: turn.who,
+    text: turn.text,
+    tools: turn.tools,
+    meta: metaLine(turn.meta),
+  };
+}
+
 export default function ChatView({ agent, onBack }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
   const [activity, setActivity] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const logRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const abort = useRef<AbortController | null>(null);
+  const poll = useRef<number | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (poll.current !== null) {
+      window.clearInterval(poll.current);
+      poll.current = null;
+    }
+  }, []);
+
+  /** Un tour tourne côté serveur sans que cet onglet y soit attaché (page
+   *  fermée puis rouverte) : on sonde la transcription jusqu'à la réponse. */
+  const followPending = useCallback(() => {
+    if (poll.current !== null) return;
+    setBusy(true);
+    setActivity("réponse en cours");
+    poll.current = window.setInterval(async () => {
+      try {
+        const { turns: rows, pending } = await getHistory(agent.id);
+        if (!pending) {
+          stopPolling();
+          setTurns(rows.map(fromHistory));
+          setBusy(false);
+          setActivity(null);
+        }
+      } catch {
+        // Session expirée ou serveur arrêté : on cessera de sonder au
+        // prochain échec visible de l'utilisateur.
+        stopPolling();
+        setBusy(false);
+        setActivity(null);
+      }
+    }, 2500);
+  }, [agent.id, stopPolling]);
+
+  // Charge la transcription à l'ouverture de l'agent.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { turns: rows, pending } = await getHistory(agent.id);
+        if (!alive) return;
+        setTurns(rows.map(fromHistory));
+        if (pending) followPending();
+      } catch {
+        /* le premier envoi resignalera le problème, avec un vrai message */
+      } finally {
+        if (alive) setLoaded(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [agent.id, followPending]);
 
   // Suit le bas du flux pendant que la réponse arrive.
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [turns, activity]);
 
-  // Annule la requête en cours si on quitte l'agent, pour ne pas laisser un
-  // flux ouvert et une mise à jour d'état sur un composant démonté.
-  useEffect(() => () => abort.current?.abort(), []);
+  // En quittant l'agent : on détache ce client du flux et on arrête le
+  // sondage. Le tour, lui, continue côté serveur — la réponse sera dans la
+  // transcription au retour.
+  useEffect(
+    () => () => {
+      abort.current?.abort();
+      stopPolling();
+    },
+    [stopPolling],
+  );
 
   async function submit() {
     const prompt = draft.trim();
     if (!prompt || busy) return;
 
-    const userTurn: Turn = { id: nextId.current++, who: "user", text: prompt };
-    const agentTurn: Turn = { id: nextId.current++, who: "agent", text: "" };
+    const userTurn: Turn = {
+      id: `l${nextId.current++}`,
+      who: "user",
+      text: prompt,
+      tools: [],
+    };
+    const agentTurn: Turn = {
+      id: `l${nextId.current++}`,
+      who: "agent",
+      text: "",
+      tools: [],
+    };
 
     setTurns((t) => [...t, userTurn, agentTurn]);
     setDraft("");
     setBusy(true);
     setActivity("en route");
+    setConfirmReset(false);
 
     const controller = new AbortController();
     abort.current = controller;
@@ -61,16 +163,19 @@ export default function ChatView({ agent, onBack }: Props) {
             patch((x) => ({ ...x, text: x.text + chunk }));
           },
           onThinking: () => setActivity("réflexion"),
-          onTool: (name) => setActivity(`outil · ${name}`),
+          onTool: (name) => {
+            setActivity(`outil · ${name}`);
+            patch((x) =>
+              x.tools.includes(name)
+                ? x
+                : { ...x, tools: [...x.tools, name] },
+            );
+          },
           onDone: (info) => {
             setActivity(null);
-            const ms = Number(info.duration_ms ?? 0);
-            const out = info.output_tokens;
-            const bits = [`${(ms / 1000).toFixed(1)} s`];
-            if (out) bits.push(`${out} tokens`);
             patch((x) => ({
               ...x,
-              meta: bits.join(" · "),
+              meta: metaLine(info as HistoryTurn["meta"]),
               // Un tour peut se terminer sans texte (ex. refus d'outil).
               text: x.text || "(aucune réponse)",
             }));
@@ -99,10 +204,12 @@ export default function ChatView({ agent, onBack }: Props) {
 
   async function handleReset() {
     abort.current?.abort();
+    stopPolling();
     await resetAgent(agent.id).catch(() => {});
     setTurns([]);
     setActivity(null);
     setBusy(false);
+    setConfirmReset(false);
   }
 
   return (
@@ -128,24 +235,41 @@ export default function ChatView({ agent, onBack }: Props) {
           </p>
         </div>
         <div className="topbar-spacer" />
-        <button
-          className="ghost-btn"
-          onClick={handleReset}
-          disabled={turns.length === 0}
-          title="Oublie le fil de cette conversation"
-        >
-          Nouveau fil
-        </button>
+        {confirmReset ? (
+          <div className="reset-confirm">
+            <span>Tout oublier ?</span>
+            <button className="link-btn" onClick={() => void handleReset()}>
+              Oui
+            </button>
+            <button
+              className="link-btn neutral"
+              onClick={() => setConfirmReset(false)}
+            >
+              Non
+            </button>
+          </div>
+        ) : (
+          <button
+            className="ghost-btn"
+            onClick={() => setConfirmReset(true)}
+            disabled={turns.length === 0}
+            title="Efface la conversation et la mémoire de l'agent"
+          >
+            Nouveau fil
+          </button>
+        )}
       </div>
 
       <div className="log" ref={logRef}>
-        {turns.length === 0 && (
+        {!loaded && <p className="empty">Chargement du fil…</p>}
+
+        {loaded && turns.length === 0 && (
           <p className="empty">
             {agent.tagline}
             <br />
             <br />
-            Le fil est conservé entre tes visites. « Nouveau fil » repart de
-            zéro.
+            Le fil est conservé entre tes visites — même si tu fermes la page
+            pendant une réponse. « Nouveau fil » repart de zéro.
           </p>
         )}
 
@@ -159,9 +283,25 @@ export default function ChatView({ agent, onBack }: Props) {
                   : agent.name}
             </span>
             {(turn.text || turn.who !== "agent") && (
-              <div className="bubble">{turn.text}</div>
+              <div className="bubble">
+                {turn.who === "agent" ? (
+                  <div className="md">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {turn.text}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  turn.text
+                )}
+              </div>
             )}
-            {turn.meta && <span className="meta-line">{turn.meta}</span>}
+            {(turn.meta || turn.tools.length > 0) && (
+              <span className="meta-line">
+                {[turn.tools.join(" + "), turn.meta]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            )}
           </div>
         ))}
 
@@ -176,7 +316,9 @@ export default function ChatView({ agent, onBack }: Props) {
       <div className="composer">
         <textarea
           value={draft}
-          placeholder={`Écris à ${agent.name}…`}
+          placeholder={
+            busy ? `${agent.name} travaille…` : `Écris à ${agent.name}…`
+          }
           rows={1}
           onChange={(e) => {
             setDraft(e.target.value);

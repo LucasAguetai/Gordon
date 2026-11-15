@@ -75,6 +75,15 @@ TOOL_CATALOG: dict[str, dict] = {
     },
 }
 
+# Les outils Apple (Agenda, Rappels, Mail) ne s'ajoutent que là où ils
+# peuvent fonctionner : sur le Mac qui porte ces données. Les entrées vivent
+# dans apple.py, à côté de leur implémentation.
+from ..config import settings as _settings  # noqa: E402 — après le catalogue de base
+from .apple import CATALOG as _APPLE_CATALOG  # noqa: E402
+
+if _settings.apple_tools:
+    TOOL_CATALOG.update(_APPLE_CATALOG)
+
 READ_ONLY = ["Read", "Glob", "Grep"]
 RESEARCH = ["WebSearch", "WebFetch"]
 FILES = ["Read", "Write", "Edit", "Glob", "Grep"]
@@ -108,7 +117,11 @@ class AgentSpec:
         return f"{self.position:02d}"
 
     def public(self) -> dict:
-        """Vue exposée au front — sans le prompt système."""
+        """Vue exposée au front, derrière l'authentification.
+
+        Le prompt système et l'effort en font partie : le formulaire
+        d'édition en a besoin pour se pré-remplir.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -119,6 +132,8 @@ class AgentSpec:
             "tools": self.tools,
             "look": self.look,
             "workspace": self.workspace,
+            "system_prompt": self.system_prompt,
+            "effort": self.effort,
         }
 
 
@@ -195,7 +210,7 @@ def unique_id(name: str) -> str:
     return candidate
 
 
-def create(
+def _validated(
     *,
     name: str,
     role: str,
@@ -204,9 +219,11 @@ def create(
     tools: list[str],
     system_prompt: str,
     look: dict,
-    effort: str | None = None,
-    workspace: str | None = None,
-) -> AgentSpec:
+    effort: str | None,
+    workspace: str | None,
+) -> dict:
+    """Valide et normalise une fiche d'agent ; mêmes règles à la création
+    et à la modification. Renvoie les colonnes prêtes pour la base."""
     name = name.strip()
     role = role.strip()
     tagline = tagline.strip()
@@ -240,23 +257,39 @@ def create(
         # Un agent sans outil fichier n'a rien à faire d'un dossier.
         workspace = None
 
-    agent_id = unique_id(name)
-    position = db.next_position()
+    return {
+        "name": name,
+        "role": role,
+        "tagline": tagline,
+        "accent": accent,
+        "tools": json.dumps(sorted(set(tools))),
+        "system_prompt": system_prompt,
+        "look": json.dumps(look),
+        "effort": effort,
+        "needs_workspace": int(needs_workspace),
+        "workspace": workspace,
+    }
 
-    db.insert_agent(
-        id=agent_id,
-        name=name,
-        role=role,
-        tagline=tagline,
-        accent=accent,
-        tools=json.dumps(sorted(set(tools))),
-        system_prompt=system_prompt,
-        look=json.dumps(look),
-        effort=effort,
-        needs_workspace=int(needs_workspace),
-        workspace=workspace,
-        position=position,
-    )
+
+def create(**raw) -> AgentSpec:
+    fields = _validated(**raw)
+    agent_id = unique_id(fields["name"])
+    db.insert_agent(id=agent_id, position=db.next_position(), **fields)
+    spec = get(agent_id)
+    assert spec is not None
+    return spec
+
+
+def update(agent_id: str, **raw) -> AgentSpec:
+    """Modifie un agent en place.
+
+    L'identifiant ne change jamais, même si le nom change : c'est lui qui
+    rattache la session Claude et la transcription — renommer un agent ne
+    doit pas lui faire perdre la mémoire.
+    """
+    if db.get_agent(agent_id) is None:
+        raise AgentError("Agent inconnu.")
+    db.update_agent(agent_id, **_validated(**raw))
     spec = get(agent_id)
     assert spec is not None
     return spec

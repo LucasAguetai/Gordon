@@ -16,13 +16,28 @@ export type Agent = {
   tools: string[];
   look: Partial<Look>;
   workspace: string | null;
+  system_prompt: string;
+  effort: string | null;
 };
 
 export type ToolMeta = {
   label: string;
   hint: string;
-  /** « files » exige un dossier de travail ; « web » non. */
-  group: "files" | "web";
+  /** « files » exige un dossier de travail ; « web » et « apple » non. */
+  group: "files" | "web" | "apple";
+};
+
+export type HistoryTurn = {
+  id: number;
+  who: "user" | "agent" | "error";
+  text: string;
+  tools: string[];
+  meta: {
+    duration_ms?: number;
+    output_tokens?: number;
+    interrupted?: boolean;
+  } | null;
+  at: string;
 };
 
 export type FolderListing = {
@@ -148,6 +163,12 @@ export const createAgent = (agent: NewAgent) =>
     body: JSON.stringify(agent),
   });
 
+export const updateAgent = (id: string, agent: NewAgent) =>
+  request<{ agent: Agent }>(`/api/agents/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(agent),
+  });
+
 export const deleteAgent = (id: string) =>
   request<{ ok: boolean }>(`/api/agents/${encodeURIComponent(id)}`, {
     method: "DELETE",
@@ -155,6 +176,12 @@ export const deleteAgent = (id: string) =>
 
 export const resetAgent = (agentId: string) =>
   request<{ ok: boolean }>(`/api/agents/${agentId}/reset`, { method: "POST" });
+
+/** Transcription persistée + tour éventuellement en cours côté serveur. */
+export const getHistory = (agentId: string) =>
+  request<{ turns: HistoryTurn[]; pending: boolean }>(
+    `/api/agents/${encodeURIComponent(agentId)}/history`,
+  );
 
 // --- Conversation en streaming ------------------------------------------
 

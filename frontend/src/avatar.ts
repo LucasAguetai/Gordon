@@ -81,8 +81,9 @@ const FALLBACK: Look = {
 };
 
 /** Complète une description partielle — les agents créés avant l'ajout d'un
- *  champ ne doivent pas casser le rendu. */
-function normalise(look: Partial<Look> | null | undefined): Look {
+ *  champ ne doivent pas casser le rendu. Exportée pour le formulaire
+ *  d'édition, qui repart du look enregistré. */
+export function normalise(look: Partial<Look> | null | undefined): Look {
   return { ...FALLBACK, ...(look ?? {}) };
 }
 
