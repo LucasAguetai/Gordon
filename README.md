@@ -194,11 +194,18 @@ lecture seule. Et chaque écriture est étroite par construction :
 - `MailBrouillon` prépare un brouillon **ouvert dans Mail** — l'agent ne
   peut rien envoyer, l'envoi reste un geste humain.
 
-À la première utilisation, macOS demande l'autorisation **sur le Mac qui
-héberge Gordon** (Calendriers, Rappels, ou Automatisation → Mail), pour
-l'application qui a lancé le serveur — ton terminal, en pratique. Si
-personne n'est devant l'écran, l'agent reçoit un message qui explique quoi
-autoriser et où.
+**Aucun lien avec le compte iCloud** : Gordon ne connaît ni identifiant ni
+mot de passe Apple et ne parle jamais aux serveurs d'Apple. Il lit les
+applications du Mac, qui se synchronisent elles-mêmes avec iCloud. Chaque
+accès est une autorisation macOS classique, visible et révocable dans les
+Réglages Système.
+
+La page **Apple** de la console (panneau Apple de l'accueil → Gérer) montre
+l'état de chaque autorisation, permet de déclencher les demandes — la
+fenêtre s'affiche **sur le Mac qui héberge Gordon** — et ouvre les Réglages
+Système au bon panneau. Elle liste aussi les calendriers visibles et les
+agents qui utilisent ces outils. Si un agent tente un accès jamais accordé,
+il reçoit un message qui explique quoi autoriser et où.
 
 C'est aussi ce qui ancre l'étape 2 : ces données vivent sur ton Mac, donc
 **c'est ton Mac qui doit héberger Gordon** pour que ces outils existent.

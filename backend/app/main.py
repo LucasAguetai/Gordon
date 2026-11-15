@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db, engine
 from .agents import registry
 from .config import settings
-from .routes import auth, chat, engine as engine_routes, folders
+from .routes import apple, auth, chat, engine as engine_routes, folders
 
 
 def locate_cli() -> Path | None:
@@ -83,6 +83,7 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
+app.include_router(apple.router)
 app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(engine_routes.router)

@@ -320,6 +320,75 @@ def _create_reminder(
     }
 
 
+# --- État des autorisations (pour la page de gestion) ----------------------
+
+# EKAuthorizationStatus → libellé montré dans la console. « écriture seule »
+# existe depuis macOS 14 : l'app peut créer sans lire.
+_STATUS_LABELS = {
+    0: "non_demande",
+    1: "restreint",
+    2: "refuse",
+    3: "accorde",
+    4: "ecriture_seule",
+}
+
+
+def access_overview() -> dict:
+    """Photographie des accès, sans jamais déclencher de fenêtre système.
+
+    Interroger le statut est passif ; seule une demande explicite (bouton de
+    la page) fait apparaître la fenêtre macOS. Les noms de calendriers et de
+    listes ne sont lus qu'une fois l'accès complet accordé.
+    """
+    if not AVAILABLE:
+        return {"available": False}
+
+    def domain(entity: int) -> dict:
+        status = _STATUS_LABELS.get(
+            EventKit.EKEventStore.authorizationStatusForEntityType_(entity),
+            "inconnu",
+        )
+        names: list[str] = []
+        if status == "accorde":
+            store = _event_store()
+            names = sorted(
+                str(cal.title())
+                for cal in store.calendarsForEntityType_(entity) or []
+            )
+        return {"status": status, "noms": names}
+
+    return {
+        "available": True,
+        "calendriers": domain(_EVENTS),
+        "rappels": domain(_REMINDERS),
+    }
+
+
+def request_access(domain: str) -> None:
+    """Déclenche la demande d'autorisation macOS (fenêtre sur le Mac hôte)."""
+    if domain == "calendriers":
+        _ensure_access(_EVENTS, "Calendriers")
+    elif domain == "rappels":
+        _ensure_access(_REMINDERS, "Rappels")
+    else:
+        raise AppleToolError(f"Domaine inconnu : {domain}")
+
+
+# Sonde minimale : adresser un évènement anodin à Mail suffit pour que macOS
+# pose (ou applique) la décision d'Automatisation. Aucun courrier n'est lu.
+_MAIL_PROBE = """
+function run() {
+  return JSON.stringify({ application: Application("Mail").name() });
+}
+"""
+
+
+def probe_mail() -> str:
+    """Teste le droit de piloter Mail. Renvoie « accorde » ou lève l'erreur."""
+    _osascript(_MAIL_PROBE)
+    return "accorde"
+
+
 # --- Mail : scripts JXA ----------------------------------------------------
 
 # Les propriétés sont lues en bloc (`messages.subject()`) : un seul Apple

@@ -10,6 +10,8 @@ import {
 } from "./api";
 import AgentForm from "./components/AgentForm";
 import AgentGrid from "./components/AgentGrid";
+import ApplePanel from "./components/ApplePanel";
+import AppleView from "./components/AppleView";
 import ChatView from "./components/ChatView";
 import DevicePanel from "./components/DevicePanel";
 import EngineConnect from "./components/EngineConnect";
@@ -28,6 +30,7 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Agent | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [appleOpen, setAppleOpen] = useState(false);
   // Incrémenté à chaque connexion réussie : le panneau Moteur se recharge.
   const [engineEpoch, setEngineEpoch] = useState(0);
 
@@ -93,6 +96,12 @@ export default function App() {
             onBack={() => setActive(null)}
             onConnectEngine={() => setConnecting(true)}
           />
+        ) : appleOpen ? (
+          <AppleView
+            agents={agents}
+            tools={tools}
+            onBack={() => setAppleOpen(false)}
+          />
         ) : (
           <>
             <AgentGrid
@@ -103,6 +112,7 @@ export default function App() {
               onDelete={handleDelete}
               onNew={() => setCreating(true)}
             />
+            <ApplePanel onManage={() => setAppleOpen(true)} />
             <EnginePanel
               onConnect={() => setConnecting(true)}
               refreshKey={engineEpoch}

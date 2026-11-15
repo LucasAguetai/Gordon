@@ -211,6 +211,35 @@ export const engineConnectCancel = () =>
 export const engineForget = () =>
   request<{ ok: boolean }>("/api/engine/token", { method: "DELETE" });
 
+// --- Accès Apple ---------------------------------------------------------
+
+export type AppleDomain = {
+  status: string;
+  /** Noms des calendriers ou des listes, une fois l'accès accordé. */
+  noms?: string[];
+};
+
+export type AppleOverview = {
+  available: boolean;
+  calendriers?: AppleDomain;
+  rappels?: AppleDomain;
+  mail?: AppleDomain;
+};
+
+export const getApple = () => request<AppleOverview>("/api/apple");
+
+export const appleRequestAccess = (domain: string) =>
+  request<{ ok: boolean }>("/api/apple/request", {
+    method: "POST",
+    body: JSON.stringify({ domain }),
+  });
+
+export const appleOpenSettings = (domain: string) =>
+  request<{ ok: boolean }>("/api/apple/settings", {
+    method: "POST",
+    body: JSON.stringify({ domain }),
+  });
+
 // --- Conversation en streaming ------------------------------------------
 
 export type StreamHandlers = {
