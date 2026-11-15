@@ -14,10 +14,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import db
+from . import db, engine
 from .agents import registry
 from .config import settings
-from .routes import auth, chat, folders
+from .routes import auth, chat, engine as engine_routes, folders
 
 
 def locate_cli() -> Path | None:
@@ -51,6 +51,8 @@ async def lifespan(app: FastAPI):
     db.init()
     registry.seed_if_empty()
     registry.backfill_workspaces()
+    # Un jeton enregistré depuis l'interface survit aux redémarrages.
+    engine.load_saved_token()
 
     if locate_cli() is None:
         print(
@@ -77,12 +79,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(engine_routes.router)
 app.include_router(folders.router)
 
 

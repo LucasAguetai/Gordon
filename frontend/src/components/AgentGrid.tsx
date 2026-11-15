@@ -46,6 +46,17 @@ export default function AgentGrid({
             key={agent.id}
             className="frame"
             style={{ ["--accent" as string]: agent.accent }}
+            // Balayage piloté ici et non par :hover : une animation liée au
+            // survol est annulée net quand le curseur ressort, et certains
+            // navigateurs laissent alors traîner l'image du voile à l'écran.
+            // Déclenché à l'entrée, retiré à la FIN de l'animation, le
+            // balayage va toujours au bout de sa course.
+            onMouseEnter={(e) => e.currentTarget.classList.add("sweeping")}
+            onAnimationEnd={(e) => {
+              if (e.animationName === "sweep") {
+                e.currentTarget.classList.remove("sweeping");
+              }
+            }}
           >
             {/* Zone cliquable en fond : un bouton imbriqué dans un bouton
                 serait du HTML invalide, et la suppression doit rester

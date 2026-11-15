@@ -63,13 +63,11 @@ def _explain(detail: str) -> str:
     lowered = detail.lower()
     if "authenticate" in lowered or "api key" in lowered or "/login" in lowered:
         return (
-            "Le moteur n'est pas connecté à ton abonnement Claude. "
-            "Dans un terminal, lance :\n\n"
-            "```\ncd backend && ./.venv/lib/python*/site-packages/"
-            "claude_agent_sdk/_bundled/claude auth login\n```\n\n"
-            "puis renvoie ton message — la conversation n'est pas perdue. "
-            "Pour un serveur sans navigateur : `claude setup-token`, puis "
-            "`GORDON_OAUTH_TOKEN` dans backend/.env."
+            "Le moteur n'est pas connecté à ton abonnement Claude.\n\n"
+            "Clique **Connecter le moteur** ci-dessous : ouvre le lien, "
+            "autorise, puis colle le code — tout se fait depuis cette page, "
+            "même au téléphone. Ensuite, renvoie simplement ton message : "
+            "la conversation n'est pas perdue."
         )
     return f"L'agent a échoué : {detail}"
 

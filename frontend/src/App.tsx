@@ -12,6 +12,8 @@ import AgentForm from "./components/AgentForm";
 import AgentGrid from "./components/AgentGrid";
 import ChatView from "./components/ChatView";
 import DevicePanel from "./components/DevicePanel";
+import EngineConnect from "./components/EngineConnect";
+import EnginePanel from "./components/EnginePanel";
 import LoginGate from "./components/LoginGate";
 
 type Phase = "checking" | "locked" | "ready";
@@ -25,6 +27,9 @@ export default function App() {
   const [active, setActive] = useState<Agent | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Agent | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  // Incrémenté à chaque connexion réussie : le panneau Moteur se recharge.
+  const [engineEpoch, setEngineEpoch] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -83,7 +88,11 @@ export default function App() {
 
       <main className="content">
         {active ? (
-          <ChatView agent={active} onBack={() => setActive(null)} />
+          <ChatView
+            agent={active}
+            onBack={() => setActive(null)}
+            onConnectEngine={() => setConnecting(true)}
+          />
         ) : (
           <>
             <AgentGrid
@@ -94,10 +103,24 @@ export default function App() {
               onDelete={handleDelete}
               onNew={() => setCreating(true)}
             />
+            <EnginePanel
+              onConnect={() => setConnecting(true)}
+              refreshKey={engineEpoch}
+            />
             <DevicePanel devices={devices} onChanged={() => void load()} />
           </>
         )}
       </main>
+
+      {connecting && (
+        <EngineConnect
+          onCancel={() => setConnecting(false)}
+          onDone={() => {
+            setConnecting(false);
+            setEngineEpoch((n) => n + 1);
+          }}
+        />
+      )}
 
       {creating && (
         <AgentForm

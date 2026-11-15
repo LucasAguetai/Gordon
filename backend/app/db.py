@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     PRIMARY KEY (user_id, agent_id)
 );
 
+CREATE TABLE IF NOT EXISTS kv (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS messages (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id    TEXT NOT NULL,
@@ -217,6 +223,35 @@ def clear_agent_session(user_id: str, agent_id: str) -> None:
             "DELETE FROM agent_sessions WHERE user_id = ? AND agent_id = ?",
             (user_id, agent_id),
         )
+
+
+# --- Clé-valeur -----------------------------------------------------------
+# Réglages écrits depuis l'interface (jeton moteur…), par opposition au .env
+# qui demande un accès shell.
+
+
+def get_kv(key: str) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT value, updated_at FROM kv WHERE key = ?", (key,)
+        ).fetchone()
+
+
+def set_kv(key: str, value: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO kv (key, value, updated_at)
+               VALUES (?, ?, datetime('now'))
+               ON CONFLICT(key)
+               DO UPDATE SET value = excluded.value,
+                             updated_at = datetime('now')""",
+            (key, value),
+        )
+
+
+def delete_kv(key: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM kv WHERE key = ?", (key,))
 
 
 # --- Transcriptions -------------------------------------------------------

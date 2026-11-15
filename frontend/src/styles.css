@@ -433,15 +433,17 @@ button {
   background: var(--accent);
 }
 
-/* Balayage de scan au survol. */
 /* Balayage de scan au survol.
  *
- * Animation à usage unique plutôt que transition réversible : avec une
- * transition, quitter la carte faisait repartir le voile en arrière en
- * retraversant le visuel, et un aller-retour rapide le laissait garé au
- * milieu le temps de finir sa course. On voyait donc un balayage sur une
- * carte qu'on ne survolait plus — facile à prendre pour la couleur du
- * voisin. Ici, le voile revient hors cadre instantanément. */
+ * Le voile n'est PAS déclenché par :hover : une animation portée par le
+ * survol est annulée net quand le curseur ressort, et un voile annulé en
+ * plein vol pouvait rester peint à l'écran — figé au milieu de la carte,
+ * facile à prendre pour la couleur du voisin. La classe .sweeping est posée
+ * à l'entrée du curseur et retirée à la FIN de l'animation (AgentGrid) :
+ * une fois lancé, le balayage va toujours au bout de sa course.
+ *
+ * Double sécurité : au repos le voile est à opacité nulle — même un état
+ * resté coincé serait invisible. */
 .frame::after {
   content: "";
   position: absolute;
@@ -454,18 +456,21 @@ button {
     transparent 62%
   );
   transform: translateX(-110%);
+  opacity: 0;
 }
 
-.frame:hover::after {
+.frame.sweeping::after {
   animation: sweep 0.72s ease-out;
 }
 
 @keyframes sweep {
   from {
     transform: translateX(-110%);
+    opacity: 1;
   }
   to {
     transform: translateX(110%);
+    opacity: 1;
   }
 }
 
@@ -1394,6 +1399,66 @@ button {
 .send-btn:disabled {
   opacity: 0.38;
   cursor: not-allowed;
+}
+
+/* ===================== Connexion du moteur ===================== */
+
+.sheet-narrow {
+  max-width: 480px;
+}
+
+.engine-body {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.engine-note {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.engine-ok {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: #6ee7a0;
+}
+
+/* Le lien d'autorisation se présente comme le bouton principal. */
+a.engine-link {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+.engine-code {
+  display: flex;
+  gap: 10px;
+}
+
+.engine-code input {
+  flex: 1;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.engine-code .primary-btn {
+  width: auto;
+  padding: 0 18px;
+}
+
+.engine-cta {
+  align-self: flex-start;
+}
+
+/* Panneaux empilés sur l'accueil : seul le premier prend ses distances. */
+.devices + .devices {
+  margin-top: 14px;
 }
 
 /* ===================== Panneau appareils ===================== */

@@ -183,6 +183,34 @@ export const getHistory = (agentId: string) =>
     `/api/agents/${encodeURIComponent(agentId)}/history`,
   );
 
+// --- Connexion du moteur -------------------------------------------------
+
+export type EngineStatus = {
+  /** Jeton posé dans backend/.env — il prime sur tout. */
+  env_token: boolean;
+  /** Jeton enregistré depuis l'interface. */
+  saved_token: boolean;
+  saved_at: string | null;
+  pending: boolean;
+};
+
+export const getEngine = () => request<EngineStatus>("/api/engine");
+
+export const engineConnectBegin = () =>
+  request<{ url: string }>("/api/engine/connect", { method: "POST" });
+
+export const engineConnectCode = (code: string) =>
+  request<{ ok: boolean }>("/api/engine/connect/code", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+
+export const engineConnectCancel = () =>
+  request<{ ok: boolean }>("/api/engine/connect", { method: "DELETE" });
+
+export const engineForget = () =>
+  request<{ ok: boolean }>("/api/engine/token", { method: "DELETE" });
+
 // --- Conversation en streaming ------------------------------------------
 
 export type StreamHandlers = {

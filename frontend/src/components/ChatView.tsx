@@ -22,6 +22,8 @@ type Turn = {
 type Props = {
   agent: Agent;
   onBack: () => void;
+  /** Ouvre la modale de connexion du moteur (flux d'autorisation). */
+  onConnectEngine: () => void;
 };
 
 /** Ligne de détail sous une réponse : durée, volume, interruption. */
@@ -62,7 +64,7 @@ function fromHistory(turn: HistoryTurn): Turn {
   };
 }
 
-export default function ChatView({ agent, onBack }: Props) {
+export default function ChatView({ agent, onBack, onConnectEngine }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -328,6 +330,15 @@ export default function ChatView({ agent, onBack }: Props) {
                   )}
                 </div>
               )}
+              {turn.who === "error" &&
+                /connecter le moteur/i.test(turn.text) && (
+                  <button
+                    className="ghost-btn engine-cta"
+                    onClick={onConnectEngine}
+                  >
+                    ⚡ Connecter le moteur
+                  </button>
+                )}
               {(turn.meta || turn.tools.length > 0) && (
                 <span className="meta-line">
                   {[turn.tools.join(" + "), turn.meta]

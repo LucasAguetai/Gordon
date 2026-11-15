@@ -65,8 +65,17 @@ npm install
 
 ### Authentifier le moteur
 
-Le CLI doit avoir une session valide, sinon les agents échouent au premier
-message avec un message explicite dans l'interface.
+Deux chemins, au choix.
+
+**Depuis la console (recommandé)** : panneau **Moteur** en bas de l'accueil
+→ **Connecter** → ouvre le lien d'autorisation, approuve, colle le code.
+Gordon pilote le flux `setup-token` du CLI et conserve un **jeton valable un
+an**, qui survit aux redémarrages. Tout se fait dans le navigateur — depuis
+un téléphone aussi, ce qui compte le jour où la session saute alors que tu
+n'as pas de shell sous la main. Le même bouton réapparaît directement sous
+l'erreur dans le chat.
+
+**Au shell** :
 
 ```bash
 cd backend
@@ -296,17 +305,16 @@ tampon du proxy sur `/api`, sinon le streaming arrive d'un bloc (l'en-tête
 > existantes : elles sont liées au domaine. Enregistre tes passkeys de
 > production une fois le domaine définitif en place.
 
-### 2. Authentification du moteur sur un serveur (moyen)
+### 2. Authentification du moteur sur un serveur (déjà réglé)
 
-`claude auth login` ouvre un navigateur — inutilisable sur un serveur. Le CLI
-prévoit le cas :
+C'est précisément ce que fait le panneau **Moteur** de la console : le flux
+d'autorisation se déroule dans **ton** navigateur, le serveur n'en a pas
+besoin, et le jeton d'un an est conservé en base. Déconnecté ? Reconnecte-toi
+depuis n'importe où, téléphone compris.
 
-```bash
-claude setup-token          # génère un jeton longue durée
-```
-
-puis colle le jeton dans `backend/.env` sous `GORDON_OAUTH_TOKEN=…`. C'est le
-mécanisme prévu pour les tâches non interactives.
+Alternative d'administration : `claude setup-token` au shell, puis le jeton
+dans `backend/.env` sous `GORDON_OAUTH_TOKEN=…` — cette valeur prime alors
+sur celle de la console.
 
 > Au démarrage, Gordon **purge les variables `CLAUDE*`/`ANTHROPIC*` héritées**
 > du terminal avant de lancer le moteur. Sans ça, démarrer le backend depuis
@@ -337,7 +345,7 @@ les agents, ni l'auth, ni l'interface.
 
 | Symptôme | Cause |
 |---|---|
-| `Failed to authenticate` dans le chat | Le CLI n'a pas de session valide → `claude auth login` |
+| « Le moteur n'est pas connecté » dans le chat | Bouton **Connecter le moteur** (sous l'erreur, ou panneau Moteur de l'accueil) |
 | « travaille déjà sur un message » | Un tour est en cours pour cet agent — un seul à la fois |
 | « macOS refuse l'accès aux Calendriers/Rappels » | Autorisation à donner sur le Mac : Réglages Système → Confidentialité et sécurité |
 | « macOS a bloqué le contrôle de Mail » | Même endroit, section Automatisation → autoriser Mail pour le terminal |
