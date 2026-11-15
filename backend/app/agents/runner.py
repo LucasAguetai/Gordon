@@ -53,6 +53,27 @@ def _sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _explain(detail: str) -> str:
+    """Traduit les échecs connus du moteur en consignes actionnables.
+
+    L'erreur d'authentification est la seule qu'un nouvel utilisateur
+    rencontre à coup sûr : elle mérite la marche à suivre exacte plutôt
+    qu'un message anglais brut.
+    """
+    lowered = detail.lower()
+    if "authenticate" in lowered or "api key" in lowered or "/login" in lowered:
+        return (
+            "Le moteur n'est pas connecté à ton abonnement Claude. "
+            "Dans un terminal, lance :\n\n"
+            "```\ncd backend && ./.venv/lib/python*/site-packages/"
+            "claude_agent_sdk/_bundled/claude auth login\n```\n\n"
+            "puis renvoie ton message — la conversation n'est pas perdue. "
+            "Pour un serveur sans navigateur : `claude setup-token`, puis "
+            "`GORDON_OAUTH_TOKEN` dans backend/.env."
+        )
+    return f"L'agent a échoué : {detail}"
+
+
 # --- Résolution des outils -------------------------------------------------
 
 
@@ -264,8 +285,13 @@ async def _run_turn(
                     db.set_agent_session(user_id, spec.id, message.session_id)
 
                 if message.is_error:
-                    detail = message.result or message.subtype
-                    fail(f"L'agent a échoué : {detail}")
+                    detail = message.result or message.subtype or ""
+                    # Le CLI diffuse souvent le même texte d'erreur comme
+                    # réponse avant le résultat : inutile de l'archiver deux
+                    # fois.
+                    if "".join(text_parts).strip() == detail.strip():
+                        text_parts.clear()
+                    fail(_explain(detail))
                     return
 
                 usage = message.usage or {}

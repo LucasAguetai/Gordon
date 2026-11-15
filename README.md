@@ -303,10 +303,18 @@ prévoit le cas :
 
 ```bash
 claude setup-token          # génère un jeton longue durée
-export CLAUDE_CODE_OAUTH_TOKEN=<le jeton>
 ```
 
-C'est le mécanisme prévu pour les tâches non interactives.
+puis colle le jeton dans `backend/.env` sous `GORDON_OAUTH_TOKEN=…`. C'est le
+mécanisme prévu pour les tâches non interactives.
+
+> Au démarrage, Gordon **purge les variables `CLAUDE*`/`ANTHROPIC*` héritées**
+> du terminal avant de lancer le moteur. Sans ça, démarrer le backend depuis
+> un environnement déjà habité (une session Claude Code, un IDE) détournait
+> l'authentification vers des jetons de session éphémères — qui pouvaient
+> même écraser la vraie connexion dans le trousseau. L'authentification de
+> Gordon vient donc toujours du trousseau (`claude auth login`) ou de
+> `GORDON_OAUTH_TOKEN`, jamais de l'environnement ambiant.
 
 ### 3. Le point à trancher (important)
 

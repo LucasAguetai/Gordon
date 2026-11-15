@@ -55,6 +55,30 @@ button {
   cursor: pointer;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--amber) 32%, transparent);
+}
+
+/* Barres de défilement discrètes, assorties au thème. */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-bright);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-dim);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* ===================== Mise en page ===================== */
 
 .shell {
@@ -91,6 +115,7 @@ button {
 
 .wordmark span {
   color: var(--amber);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--amber) 55%, transparent);
 }
 
 .wordmark small {
@@ -151,6 +176,27 @@ button {
   width: 100%;
   max-width: 440px;
   text-align: center;
+  position: relative;
+}
+
+/* Halo ambré qui respire doucement derrière l'écran verrouillé. */
+.gate-card::before {
+  content: "";
+  position: absolute;
+  inset: -120px -80px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 45% at 50% 42%,
+    color-mix(in srgb, var(--amber) 9%, transparent),
+    transparent 70%
+  );
+  animation: breathe 5s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 /* Compte à rebours décoratif, joué une fois à l'arrivée. */
@@ -240,6 +286,13 @@ button {
   display: block;
   width: 100%;
   height: 100%;
+  transition: transform 0.35s ease;
+  transform-origin: 50% 100%;
+}
+
+/* Le portrait se penche légèrement vers l'avant au survol de la carte. */
+.frame:hover .frame-portrait .reel-cell svg {
+  transform: scale(1.06);
 }
 
 .gate-title {
@@ -504,6 +557,27 @@ button {
   border: 1px solid var(--line);
 }
 
+/* Chaque famille d'outils a sa teinte : on lit la portée d'un agent
+   d'un coup d'œil, sans ouvrir sa fiche. */
+.chip-web {
+  color: #7fc8e8;
+  border-color: rgba(127, 200, 232, 0.28);
+  background: rgba(127, 200, 232, 0.07);
+}
+
+.chip-apple {
+  color: #e8dcc8;
+  border-color: rgba(232, 220, 200, 0.26);
+  background: rgba(232, 220, 200, 0.06);
+}
+
+.chip-apple::before {
+  /* U+F8FF : le logo Apple — ces outils n'existent que sur Mac, où le
+     glyphe est garanti. */
+  content: "\F8FF ";
+  opacity: 0.8;
+}
+
 /* Zone cliquable qui couvre la carte. Elle est au-dessus du contenu pour
    que le clic porte partout, et la suppression passe encore au-dessus. */
 .frame-hit {
@@ -633,6 +707,12 @@ button {
   place-items: start center;
   padding: 36px 20px;
   overflow-y: auto;
+  animation: backdrop-in 0.2s ease-out;
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .sheet {
@@ -642,6 +722,12 @@ button {
   border-radius: var(--radius);
   background: var(--bg-elev);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  animation: sheet-in 0.26s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .sheet-head {
@@ -997,11 +1083,47 @@ button {
   max-width: 340px;
 }
 
+/* Un créneau = un éventuel séparateur de jour + le tour lui-même. Il garde
+   la mise en page du flux ; l'alignement gauche/droite reste sur .turn. */
+.turn-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.day-sep {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0 2px;
+}
+
+.day-sep::before,
+.day-sep::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.day-sep span {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+}
+
 .turn {
   display: flex;
   flex-direction: column;
   gap: 7px;
   max-width: 76ch;
+  animation: turn-in 0.28s ease-out;
+}
+
+@keyframes turn-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .turn.user {
@@ -1015,6 +1137,13 @@ button {
   letter-spacing: 0.19em;
   text-transform: uppercase;
   color: var(--muted-dim);
+}
+
+/* L'heure du tour, en retrait de l'étiquette. */
+.turn-who time {
+  margin-left: 9px;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
 }
 
 .turn.agent .turn-who {
@@ -1176,17 +1305,26 @@ button {
   color: var(--muted-dim);
 }
 
-.pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 1.15s ease-in-out infinite;
+/* Trois points en vague, le temps que l'agent travaille. */
+.dots {
+  display: inline-flex;
+  gap: 4px;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.25; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.25); }
+.dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dot-wave 1.2s ease-in-out infinite;
+}
+
+.dots i:nth-child(2) { animation-delay: 0.15s; }
+.dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes dot-wave {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
 }
 
 .meta-line {
@@ -1224,6 +1362,7 @@ button {
 .composer textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .composer textarea::placeholder {
@@ -1243,11 +1382,13 @@ button {
   font-size: 11.5px;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  transition: filter 0.14s, opacity 0.14s;
+  transition: filter 0.14s, opacity 0.14s, transform 0.14s, box-shadow 0.14s;
 }
 
 .send-btn:hover:not(:disabled) {
   filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .send-btn:disabled {

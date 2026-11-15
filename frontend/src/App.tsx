@@ -88,6 +88,7 @@ export default function App() {
           <>
             <AgentGrid
               agents={agents}
+              tools={tools}
               onSelect={setActive}
               onEdit={setEditing}
               onDelete={handleDelete}

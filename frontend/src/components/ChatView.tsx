@@ -16,6 +16,7 @@ type Turn = {
   text: string;
   tools: string[];
   meta?: string;
+  when: Date;
 };
 
 type Props = {
@@ -33,6 +34,23 @@ function metaLine(meta: HistoryTurn["meta"]): string | undefined {
   return bits.length ? bits.join(" · ") : undefined;
 }
 
+/** SQLite horodate en UTC sans suffixe ; le Z rétablit le fuseau local. */
+function asDate(at: string): Date {
+  return new Date(at.replace(" ", "T") + "Z");
+}
+
+function dayLabel(d: Date): string {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
+  if (d.toDateString() === yesterday.toDateString()) return "Hier";
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
+const hhmm = (d: Date) =>
+  d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
 function fromHistory(turn: HistoryTurn): Turn {
   return {
     id: `h${turn.id}`,
@@ -40,6 +58,7 @@ function fromHistory(turn: HistoryTurn): Turn {
     text: turn.text,
     tools: turn.tools,
     meta: metaLine(turn.meta),
+    when: asDate(turn.at),
   };
 }
 
@@ -133,12 +152,14 @@ export default function ChatView({ agent, onBack }: Props) {
       who: "user",
       text: prompt,
       tools: [],
+      when: new Date(),
     };
     const agentTurn: Turn = {
       id: `l${nextId.current++}`,
       who: "agent",
       text: "",
       tools: [],
+      when: new Date(),
     };
 
     setTurns((t) => [...t, userTurn, agentTurn]);
@@ -273,41 +294,58 @@ export default function ChatView({ agent, onBack }: Props) {
           </p>
         )}
 
-        {turns.map((turn) => (
-          <div key={turn.id} className={`turn ${turn.who}`}>
-            <span className="turn-who">
-              {turn.who === "user"
-                ? "Toi"
-                : turn.who === "error"
-                  ? "Échec"
-                  : agent.name}
-            </span>
-            {(turn.text || turn.who !== "agent") && (
-              <div className="bubble">
-                {turn.who === "agent" ? (
-                  <div className="md">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {turn.text}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  turn.text
-                )}
+        {turns.map((turn, i) => (
+          <div key={turn.id} className="turn-slot">
+            {/* Séparateur quand le jour change — l'historique peut couvrir
+                des semaines, les repères temporels comptent. */}
+            {(i === 0 ||
+              dayLabel(turns[i - 1].when) !== dayLabel(turn.when)) && (
+              <div className="day-sep">
+                <span>{dayLabel(turn.when)}</span>
               </div>
             )}
-            {(turn.meta || turn.tools.length > 0) && (
-              <span className="meta-line">
-                {[turn.tools.join(" + "), turn.meta]
-                  .filter(Boolean)
-                  .join(" · ")}
+            <div className={`turn ${turn.who}`}>
+              <span className="turn-who">
+                {turn.who === "user"
+                  ? "Toi"
+                  : turn.who === "error"
+                    ? "Échec"
+                    : agent.name}
+                <time>{hhmm(turn.when)}</time>
               </span>
-            )}
+              {(turn.text || turn.who !== "agent") && (
+                <div className="bubble">
+                  {turn.who === "user" ? (
+                    turn.text
+                  ) : (
+                    // Agent et erreurs : les consignes d'échec contiennent
+                    // des blocs de code à copier, autant les rendre aussi.
+                    <div className="md">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {turn.text}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              )}
+              {(turn.meta || turn.tools.length > 0) && (
+                <span className="meta-line">
+                  {[turn.tools.join(" + "), turn.meta]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              )}
+            </div>
           </div>
         ))}
 
         {activity && (
           <div className="activity">
-            <span className="pulse" />
+            <span className="dots">
+              <i />
+              <i />
+              <i />
+            </span>
             {activity}
           </div>
         )}

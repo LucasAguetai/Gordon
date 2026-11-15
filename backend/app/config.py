@@ -6,6 +6,7 @@ placé dans backend/. Voir .env.example.
 
 from __future__ import annotations
 
+import os
 import secrets
 import sys
 from pathlib import Path
@@ -66,6 +67,11 @@ class Settings(BaseSettings):
     # Chemin du binaire `claude` si absent du PATH.
     cli_path: str | None = None
 
+    # Jeton longue durée pour un serveur sans navigateur (`claude setup-token`).
+    # Laisse vide en local : le CLI utilise alors la session de `claude auth
+    # login`, stockée dans le trousseau macOS.
+    oauth_token: str | None = None
+
     # --- Outils Apple ---
     # Agenda, Rappels et Mail passent par les applications du Mac : ils
     # n'existent que sur macOS, et seulement sur la machine où vivent ces
@@ -81,3 +87,25 @@ settings = Settings()
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 settings.workspace_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _scrub_engine_env() -> None:
+    """Purge l'environnement hérité avant tout lancement du moteur.
+
+    Si Gordon est démarré depuis un terminal déjà « habité » (une session
+    Claude Code, un IDE), le CLI hérite de variables ANTHROPIC_*/CLAUDE_* qui
+    détournent son authentification vers la session parente — des jetons à
+    durée de vie courte, que le CLI peut même persister dans le trousseau en
+    écrasant la vraie connexion de l'utilisateur. C'est arrivé ici. On repart
+    donc toujours d'un environnement neutre : l'authentification vient du
+    trousseau (`claude auth login`), ou du jeton GORDON_OAUTH_TOKEN ci-dessous.
+    """
+    for name in list(os.environ):
+        if name.startswith(("CLAUDE", "ANTHROPIC")):
+            del os.environ[name]
+
+    if settings.oauth_token:
+        os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = settings.oauth_token
+
+
+_scrub_engine_env()

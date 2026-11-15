@@ -1,9 +1,10 @@
 import { useState } from "react";
-import type { Agent } from "../api";
+import type { Agent, ToolMeta } from "../api";
 import PortraitReel from "./PortraitReel";
 
 type Props = {
   agents: Agent[];
+  tools: Record<string, ToolMeta>;
   onSelect: (agent: Agent) => void;
   onEdit: (agent: Agent) => void;
   onDelete: (agent: Agent) => Promise<void>;
@@ -12,6 +13,7 @@ type Props = {
 
 export default function AgentGrid({
   agents,
+  tools,
   onSelect,
   onEdit,
   onDelete,
@@ -76,7 +78,11 @@ export default function AgentGrid({
                 <span className="tool-chip">conversation seule</span>
               ) : (
                 agent.tools.map((tool) => (
-                  <span className="tool-chip" key={tool}>
+                  <span
+                    className={`tool-chip chip-${tools[tool]?.group ?? "files"}`}
+                    title={tools[tool]?.label}
+                    key={tool}
+                  >
                     {tool}
                   </span>
                 ))
